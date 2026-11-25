@@ -226,7 +226,34 @@ await page.waitForSelector('#sheet [data-c="pay"]');
   assert.equal(await page.$eval('#sheet .facts tr:last-child td', td => { const r = td.getBoundingClientRect(); return document.elementFromPoint(r.left + 4, r.top + r.height / 2) === td; }), true,
     'the answers cover the last row of the rent table');
 }
+// Rent paid floats off both pieces, out of the payer's and into the owner's (whose card lights up), and money floating
+// off a space on the board's top row stays on the board.
 await page.setViewportSize({ width: 390, height: 844 });
+await scene(RENT);
+await page.waitForSelector('#sheet [data-c="pay"]');
+await page.evaluate(() => {
+  window.seen = { floats: [], flash: [] };
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+    if (n.classList?.contains('float')) window.seen.floats.push({ text: n.textContent, fill: n.getAttribute('fill'), el: n });
+  }))).observe(document.querySelector('#board .fx'), { childList: true });
+  new MutationObserver(() => document.querySelectorAll('.chip.flash').forEach(c => window.seen.flash.push([...c.parentNode.children].indexOf(c))))
+    .observe(document.getElementById('players'), { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+});
+{
+  const { owner, rent } = await page.evaluate(() => window.boomtown.state.pending);
+  await page.click('#sheet [data-c="pay"]');
+  await page.waitForTimeout(800);
+  const seen = await page.evaluate(() => {
+    const board = document.getElementById('board').getBoundingClientRect();
+    return { floats: window.seen.floats.map(f => ({ text: f.text, fill: f.fill, inside: f.el.isConnected ? f.el.getBoundingClientRect().top >= board.top : null })), flash: window.seen.flash };
+  });
+  const amount = '$' + rent.toLocaleString('en-US');
+  assert.ok(seen.floats.some(f => f.text === '−' + amount), `no −${amount} off the payer: ${JSON.stringify(seen)}`);
+  assert.ok(seen.floats.some(f => f.text === '+' + amount && f.fill === '#1f7a46'), `no green +${amount} into the owner: ${JSON.stringify(seen)}`);
+  assert.ok(seen.flash.includes(owner), "the owner's card doesn't light up when rent comes in");
+  assert.ok(seen.floats.every(f => f.inside !== false), `money floating off the top row leaves the board: ${JSON.stringify(seen)}`);
+}
+
 await scene();
 await page.click('#board .cell[data-i="17"]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');

@@ -219,16 +219,18 @@ export function createBoard(svg, { onCell } = {}) {
 
   view.jump = (s, p, at) => { view.shown[p] = at; view.placeTokens(s); };
 
-  // A few words floating up off a space: money in or out.
+  // A few words floating up off a space: money in or out. Near the top edge (the top row and its corners) there's no
+  // room above, so they start below the piece and drift down instead.
   view.float = (i, text, color = art.INK, ms = 1300) => {
     const [x, y] = layout(i).tok;
+    const down = y < 120, dir = down ? 1 : -1;
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('class', 'float');
-    t.setAttribute('x', x); t.setAttribute('y', y - 20);
+    t.setAttribute('x', x); t.setAttribute('y', down ? y + 44 : y - 20);
     t.setAttribute('fill', color);
     t.textContent = text;
     fxG.appendChild(t);
-    t.animate([{ transform: 'translateY(0)', opacity: 0 }, { transform: 'translateY(-14px)', opacity: 1, offset: 0.15 }, { transform: 'translateY(-60px)', opacity: 0 }], { duration: ms, easing: 'ease-out' })
+    t.animate([{ transform: 'translateY(0)', opacity: 0 }, { transform: `translateY(${14 * dir}px)`, opacity: 1, offset: 0.15 }, { transform: `translateY(${60 * dir}px)`, opacity: 0 }], { duration: ms, easing: 'ease-out' })
       .finished.then(() => t.remove(), () => t.remove());
   };
 

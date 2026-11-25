@@ -230,7 +230,7 @@ function drawDice() {
 
 function drawPlayers() {
   const el = $('players');
-  el.innerHTML = s.players.map((pl, p) => {
+  const html = s.players.map((pl, p) => {
     const worth = G.netWorth(s, p);
     const detours = `${pl.detours} detour${pl.detours === 1 ? '' : 's'}`;
     // Two rows that never change shape: name and cash, then what they're worth, or what they owe while they owe it.
@@ -239,7 +239,19 @@ function drawPlayers() {
       <span class="r"><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span></span>
       <span class="r">${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth">worth ${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span></span>
     </div>`;
-  }).join('');
+  });
+  // Redraw only the cards that changed, so a card lighting up (see flashCard) isn't cut short by the next render.
+  if (el.children.length !== html.length) el.innerHTML = html.join('');
+  else html.forEach((h, p) => { if (el.children[p]._h !== h) el.children[p].outerHTML = h; });
+  [...el.children].forEach((c, p) => { c._h = html[p]; });
+}
+
+// A player's card lights up gold for a moment: money came in.
+function flashCard(p) {
+  const c = $('players').children[p];
+  if (!c) return;
+  c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
+  setTimeout(() => c.classList.remove('flash'), 700);
 }
 
 function addLog(text) {
@@ -368,8 +380,14 @@ async function play(events, my = gen) {
         case 'pay':
           if (e.to === 'bank') break; // a purchase: the buy or build event shows it
           view.float(s.players[e.from].pos, `−${money(e.amount)}`, '#b23a2a');
-          sfx.pay();
           note = line || note; render();
+          if (typeof e.to === 'number') {
+            // Rent and forced sales: out of one piece and, a beat later, into the other. A person hears the coin when
+            // the money comes to them from one of the townsfolk.
+            const to = e.to, kind = p => s.players[p].kind;
+            if (kind(to) === 'human' && kind(e.from) !== 'human') sfx.coin(); else sfx.pay();
+            setTimeout(() => { if (my !== gen) return; view.float(s.players[to].pos, `+${money(e.amount)}`, '#1f7a46'); flashCard(to); }, 250 * k);
+          } else sfx.pay();
           await wait(600 * k);
           break;
         case 'loan': note += ` ${line}`; render(); await wait(400 * k); break;
