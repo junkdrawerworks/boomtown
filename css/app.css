@@ -45,6 +45,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .wordmark { font: 22px var(--slab); letter-spacing: .02em; color: var(--gold); text-shadow: 0 2px 0 #0004; }
 .round { flex: 1; font-weight: 700; font-size: 14px; opacity: .85; font-variant-numeric: tabular-nums; }
+.round.last { color: var(--gold); opacity: 1; }
 .icon-btn {
   width: 40px; height: 40px; border-radius: 10px; border: 2px solid #ffffff30; background: #ffffff12;
   color: var(--paper); font-size: 20px; line-height: 1; display: grid; place-items: center;

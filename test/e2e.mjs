@@ -278,6 +278,12 @@ await page.click('#actions button:has-text("Roll the dice")');
 await page.waitForSelector('.move-btn');
 assert.equal(await page.$$eval('#dice .die.used', ds => ds.length), 0, 'a die stays dimmed after the next roll');
 
+// The last round says so, before Founders' Day arrives.
+await scene('s.round = s.rounds;');
+assert.equal(await page.textContent('#round'), 'Last round', 'the header does not say it is the last round');
+assert.equal(await page.$eval('#round', el => el.classList.contains('last')), true, 'the last round is not marked out');
+assert.match(await page.textContent('#say'), /Founders' Day after this round\./, "the last round's first turn doesn't say Founders' Day comes after it");
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });

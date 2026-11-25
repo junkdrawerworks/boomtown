@@ -140,15 +140,19 @@ function startGame(game, resumed = false) {
 // ---------- drawing the play screen ----------
 function whoseTurn() {
   const pl = G.current(s);
-  if (pl.kind === 'bot') return `${esc(pl.name)}'s turn.`;
-  return humans() > 1 || pl.name !== 'You' ? `${esc(pl.name)}, your turn.` : 'Your turn.';
+  // The first turn of the last round says what's coming.
+  const last = s.round === s.rounds && s.turn === 0 && s.phase === 'roll' ? " Founders' Day after this round." : '';
+  if (pl.kind === 'bot') return `${esc(pl.name)}'s turn.${last}`;
+  return (humans() > 1 || pl.name !== 'You' ? `${esc(pl.name)}, your turn.` : 'Your turn.') + last;
 }
 
 function render() {
   if (!s) return;
   const human = isHumanTurn() && !busy;
   const p = s.turn, pl = G.current(s);
-  $('round').textContent = s.phase === 'over' ? "Founders' Day" : `Round ${s.round} of ${s.rounds}`;
+  const last = s.phase !== 'over' && s.round === s.rounds;
+  $('round').textContent = s.phase === 'over' ? "Founders' Day" : last ? 'Last round' : `Round ${s.round} of ${s.rounds}`;
+  $('round').classList.toggle('last', last);
   // Board marks: where the dice can take you, what you can build on.
   let dests = [], buildable = [];
   if (human && s.phase === 'move') dests = G.moveOptions(s).map(o => ({ to: o.to, label: o.steps, usable: o.usable }));
