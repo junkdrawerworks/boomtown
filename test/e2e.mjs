@@ -79,6 +79,10 @@ assert.equal(await page.isVisible('#title'), true, 'the title screen shows first
 await page.evaluate(() => localStorage.setItem('boomtown.prefs', JSON.stringify({ speed: 'fast', sound: false, len: 'short', seats: [{ who: 'you', name: 'You' }, { who: 'mabel' }, { who: 'none' }, { who: 'none' }] })));
 await page.reload();
 assert.equal(await page.textContent('#len-short'), '18 rounds', 'two players get more rounds');
+{
+  const [dot, link] = await page.$$eval('.title-links > span, #rulesBtn', es => es.map(e => { const g = document.createRange(); g.selectNodeContents(e); const r = g.getBoundingClientRect(); return r.top + r.height / 2; }));
+  assert.ok(Math.abs(dot - link) < 2, `the dot between the title screen's links sits ${(link - dot).toFixed(1)} px off their middle`);
+}
 await page.click('#startBtn');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18');
@@ -194,6 +198,13 @@ await scene("B.LOTS_IN.bank.forEach(i => { s.owner[i] = 3; s.level[i] = 3; }); s
   assert.ok(tags.filter(t => t.text.length <= 5).every(t => t.size >= 26), `short tags on the tall board are small: ${JSON.stringify(tags)}`);
   assert.equal(await page.textContent('#board .cell[data-i="0"] .corner-sub'), '$' + await page.evaluate(() => window.boomtown.G.RULES.salary));
 }
+
+// On a small phone the buttons in the middle of the board keep to one line each.
+await page.setViewportSize({ width: 375, height: 667 });
+await scene("s.phase = 'manage'; s.dice = [1, 2];");
+assert.deepEqual(await page.$$eval('#actions .row button', bs => bs.filter(b => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1; }).map(b => b.textContent)),
+  [], 'a button in the middle of the board wraps onto two lines at 375 px');
+await page.setViewportSize({ width: 390, height: 844 });
 
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.

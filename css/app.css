@@ -110,6 +110,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 100%; max-width: 300px; }
 .actions .row { display: flex; gap: 6px; }
 .actions .row > * { flex: 1; }
+.actions .row button { white-space: nowrap; }
+@media (max-width: 379px) { .actions .row button { padding-left: 8px; padding-right: 8px; } }
 
 .primary, .secondary, .ghost {
   border: 2.5px solid var(--ink); border-radius: 12px; padding: 9px 12px; font-weight: 800; font-size: 15px;
@@ -245,7 +247,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
 .seg b { font-size: 15px; }
 .seg span { font-size: 12px; opacity: .8; }
-.title-links { display: flex; justify-content: center; gap: 6px; margin-top: 10px; color: var(--muted); }
+.title-links { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 10px; color: var(--muted); }
 .link { background: none; border: 0; text-decoration: underline; font-weight: 700; color: var(--ink); padding: 6px; }
 
 .rules ul { padding-left: 18px; margin: 6px 0; }
