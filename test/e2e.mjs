@@ -260,6 +260,24 @@ assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tappe
 await page.click('#sheet [data-close]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 0, 'the ring stays after the sheet closes');
 
+// After a detour the die not moved by is dimmed, until the next roll. With reduced motion asked for, pieces jump
+// rather than hop.
+await page.setViewportSize({ width: 390, height: 844 });
+await page.emulateMedia({ reducedMotion: 'reduce' });
+await scene("s.players[0].detours = 2; s.dice = [2, 5]; s.phase = 'move';");
+await page.click('.move-btn:has(.n:text-is("2"))');
+await page.waitForTimeout(60);
+assert.equal(await page.evaluate(() => document.getAnimations().filter(a => a.effect?.target?.closest?.('.tok')).length), 0, 'pieces hop with reduced motion asked for');
+await page.waitForTimeout(600);
+assert.deepEqual(await page.$$eval('#dice .die', ds => ds.map(d => d.classList.contains('used'))), [false, true], 'after a detour by the 2, the 5 is not dimmed');
+await page.emulateMedia({ reducedMotion: 'no-preference' });
+await answer();
+await page.click('#actions button:has-text("End turn")');
+await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+await page.click('#actions button:has-text("Roll the dice")');
+await page.waitForSelector('.move-btn');
+assert.equal(await page.$$eval('#dice .die.used', ds => ds.length), 0, 'a die stays dimmed after the next roll');
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });

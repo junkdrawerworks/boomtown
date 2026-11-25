@@ -5,7 +5,7 @@ import { SPACES, DISTRICT, DISTRICTS, LOTS_IN, OWNABLE, DEPOTS, SPACE_HELP } fro
 import * as G from './game.js';
 import { CARD } from './cards.js';
 import { BOTS, botStep } from './bots.js';
-import { createBoard } from './view.js';
+import { createBoard, calm } from './view.js';
 import * as art from './art.js';
 import { sfx, setSound, soundOn } from './sound.js';
 
@@ -31,6 +31,7 @@ let gen = 0;                   // bumps when a game is left, so a bot turn in fl
 let busy = false;              // something is animating; the buttons wait
 let note = '';                 // the line in the middle of the board
 let ringed = null;             // the space a sheet is about, ringed on the board while the sheet is open
+let unused = null;             // after a detour, which die (0 or 1) wasn't moved by: it's dimmed until the next roll
 const view = createBoard($('board'), { onCell: i => showSpace(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -126,6 +127,7 @@ function startGame(game, resumed = false) {
   s.log ||= [];
   gen++;
   closeSheet(); // Play again starts from Founders' Day's sheet
+  unused = null;
   $('title').hidden = true;
   $('app').hidden = false;
   view.reset();
@@ -226,6 +228,7 @@ function drawDice() {
     el.innerHTML = s.dice.map(v => `<span class="die">${art.dieFace(v)}</span>`).join('');
     el.dataset.v = s.dice.join();
   }
+  [...el.children].forEach((d, k) => d.classList.toggle('used', k === unused));
 }
 
 function drawPlayers() {
@@ -346,6 +349,7 @@ async function play(events, my = gen) {
   busy = true;
   render();
   const k = pace(), bot = G.current(s).kind === 'bot';
+  let detour = false;
   try {
     for (const e of events) {
       if (my !== gen) return;
@@ -354,6 +358,7 @@ async function play(events, my = gen) {
       switch (e.t) {
         case 'roll': {
           sfx.dice();
+          unused = null;
           drawDice();
           const d = $('dice');
           d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
@@ -362,11 +367,13 @@ async function play(events, my = gen) {
           await wait(500 * k);
           break;
         }
-        case 'detour': note = line; $('say').innerHTML = note; break;
+        case 'detour': note = line; $('say').innerHTML = note; detour = true; break;
         case 'move': {
-          const ms = (bot ? 120 : 140) * k;
+          const ms = calm() ? 0 : (bot ? 120 : 140) * k;
           const steps = e.path.length;
-          for (let j = 0; j < steps; j++) setTimeout(() => sfx.hop(), j * ms);
+          if (detour && s.dice) { unused = s.dice[0] === steps ? 1 : 0; detour = false; drawDice(); } // dim the other die
+          if (ms) for (let j = 0; j < steps; j++) setTimeout(() => sfx.hop(), j * ms);
+          else sfx.hop();
           await view.animateMove(s, e.p, e.path, ms);
           break;
         }

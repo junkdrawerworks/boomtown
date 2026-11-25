@@ -6,6 +6,7 @@ import { landValue, rentFor, LEVEL_NAMES, RULES } from './game.js';
 import * as art from './art.js';
 
 const NS = 'http://www.w3.org/2000/svg';
+export const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the person asked for less motion
 const TOKEN_SCALE = 1.35;
 const usd = n => `$${n.toLocaleString('en-US')}`; // as money() in app.js writes it
 // A player's colour a fifth of the way to ink, for the rent tags: white on it reads at 5:1 or better.
@@ -223,7 +224,8 @@ export function createBoard(svg, { onCell } = {}) {
   // room above, so they start below the piece and drift down instead.
   view.float = (i, text, color = art.INK, ms = 1300) => {
     const [x, y] = layout(i).tok;
-    const down = y < 120, dir = down ? 1 : -1;
+    const down = y < 120, dir = (down ? 1 : -1) * (calm() ? 0.2 : 1);
+    if (calm()) ms = Math.min(ms, 700);
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('class', 'float');
     t.setAttribute('x', x); t.setAttribute('y', down ? y + 44 : y - 20);
