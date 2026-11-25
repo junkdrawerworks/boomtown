@@ -393,4 +393,23 @@ const all = createHash('sha1');
 for (const f of shell) all.update(createHash('sha1').update(await readFile(join(root, f.endsWith('/') ? f + 'index.html' : f))).digest());
 const files = all.digest('hex').slice(0, 8);
 assert.equal(sw.match(/const FILES = '([0-9a-f]*)'/)?.[1], files, `a file sw.js keeps for offline has changed: set FILES in sw.js to '${files}'`);
+// The icons: iOS shows icon-180.png whole (it only rounds the corners), so the board fills it; Android keeps only the
+// middle circle, 80% across, of icon-512-maskable.png, so the board stays inside that.
+{
+  const UPNG = require('upng-js');
+  const art = async f => {
+    const img = UPNG.decode(await readFile(join(root, f))), px = new Uint8Array(UPNG.toRGBA8(img)[0]), w = img.width, pts = [];
+    for (let y = 0; y < img.height; y++) for (let x = 0; x < w; x++) {
+      const k = (y * w + x) * 4;
+      if (Math.abs(px[k] - 0x21) + Math.abs(px[k + 1] - 0x40) + Math.abs(px[k + 2] - 0x2f) > 60) pts.push([x, y]); // not the felt
+    }
+    return { w, pts };
+  };
+  const ios = await art('icon-180.png');
+  const span = Math.max(...ios.pts.map(p => p[0])) - Math.min(...ios.pts.map(p => p[0])) + 1;
+  assert.ok(span / ios.w >= 0.7, `the board fills only ${Math.round(span / ios.w * 100)}% of the iOS icon`);
+  const mask = await art('icon-512-maskable.png');
+  const out = mask.pts.filter(([x, y]) => Math.hypot(x + 0.5 - mask.w / 2, y + 0.5 - mask.w / 2) > mask.w * 0.4);
+  assert.equal(out.length, 0, `${out.length} pixels of the maskable icon's board fall outside Android's circle`);
+}
 console.log('all good');
