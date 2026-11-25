@@ -143,6 +143,7 @@ assert.equal(await page.isVisible('#sheet .chart'), true);
 await page.click('#sheet [data-a="again"]');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18', 'Play again starts a new game');
+assert.equal(await sheetOpen(), false, "Founders' Day stays open over the new game");
 
 // On a phone held upright the board stands taller than it is wide, and the middle has room for the buttons.
 const box = await page.$eval('.board-wrap', el => el.getBoundingClientRect().toJSON());

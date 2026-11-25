@@ -123,6 +123,7 @@ function startGame(game, resumed = false) {
   s = game;
   s.log ||= [];
   gen++;
+  closeSheet(); // Play again starts from Founders' Day's sheet
   $('title').hidden = true;
   $('app').hidden = false;
   view.reset();
