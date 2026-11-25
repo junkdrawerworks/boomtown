@@ -30,6 +30,7 @@ let s = null;                  // the game in play
 let gen = 0;                   // bumps when a game is left, so a bot turn in flight stops
 let busy = false;              // something is animating; the buttons wait
 let note = '';                 // the line in the middle of the board
+let ringed = null;             // the space a sheet is about, ringed on the board while the sheet is open
 const view = createBoard($('board'), { onCell: i => showSpace(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -43,6 +44,7 @@ const save = () => { if (s) store.set(KEY, s); };
 const humans = () => s.players.filter(p => p.kind === 'human').length;
 const isHumanTurn = () => s && s.phase !== 'over' && G.current(s).kind === 'human';
 const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
+const ring = i => { ringed = i; if (s) view.focus(i); };
 
 // ---------- the title screen ----------
 function showTitle() {
@@ -149,7 +151,7 @@ function render() {
   let dests = [], buildable = [];
   if (human && s.phase === 'move') dests = G.moveOptions(s).map(o => ({ to: o.to, label: o.steps, usable: o.usable }));
   if (human && s.phase === 'manage') buildable = OWNABLE.filter(i => G.canBuild(s, p, i).ok);
-  view.render(s, { dests, buildable });
+  view.render(s, { dests, buildable, focus: ringed });
   drawPlayers();
   drawLogList();
   drawDice();
@@ -450,6 +452,7 @@ function closeSheet(byUser = false) {
   $('sheetWrap').hidden = true;
   const f = onSheetClose;
   onSheetClose = null;
+  if (ringed != null) ring(null);
   if (was && byUser && f) f();
 }
 $('sheetBody').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(true); });
@@ -501,7 +504,7 @@ function showSpace(i) {
         if (!c.ok && c.reason) b.push(`<p class="note">${esc(c.reason)}</p>`);
       }
       if (G.canSell(s, p, i) && (s.phase === 'manage' || s.phase === 'roll')) b.push(`<button class="secondary" data-sell>Sell the ${G.LEVEL_NAMES[s.level[i]].toLowerCase()} back for ${money(G.sellValue(i))}</button>`);
-      if (b.length) h += `<div class="buttons">${b.join('')}</div>`;
+      if (b.length) h += `<div class="buttons stick">${b.join('')}</div>`;
     }
   } else {
     h = `<h2 id="sheetTitle">${esc(sp.name)}</h2><p>${SPACE_HELP[sp.type]}</p>`;
@@ -509,6 +512,7 @@ function showSpace(i) {
     if (sp.type === 'payday') h += `<p>Pay is ${money(G.RULES.salary)}, or ${money(G.RULES.salary + G.RULES.landBonus)} for landing on it. Passing it also gives back a detour, and adds interest to any loan.</p>`;
   }
   const body = openSheet(h, { light: true });
+  ring(i);
   body.querySelector('[data-build]')?.addEventListener('click', () => { closeSheet(); doBuild(i); });
   body.querySelector('[data-sell]')?.addEventListener('click', () => { closeSheet(); doSell(i); });
 }
@@ -552,7 +556,7 @@ function askDecision() {
   switch (q.kind) {
     case 'buy': {
       const can = pl.cash >= q.price;
-      h = lotFacts(q.at) + `<div class="buttons">
+      h = lotFacts(q.at) + `<div class="buttons stick">
         <button class="primary" data-c="buy" ${can ? '' : 'disabled'}>Buy it for ${money(q.price)}</button>
         ${can ? '' : `<p class="note">You have ${money(pl.cash)}${pl.debt ? ' and a loan to clear' : ''}.</p>`}
         <button class="secondary" data-c="pass">Leave it</button></div>`;
@@ -561,7 +565,7 @@ function askDecision() {
     case 'rent': {
       const short = Math.max(0, q.rent - pl.cash);
       const sp = SPACES[q.at];
-      h = lotFacts(q.at) + '<div class="buttons">';
+      h = lotFacts(q.at) + '<div class="buttons stick">';
       h += `<button class="primary" data-c="pay">Pay ${nm(q.owner)} ${money(q.rent)}</button>`;
       if (short) h += `<p class="note">You're ${money(short)} short. The bank lends the rest, and adds 10% each time you pass Payday. Money coming in pays it off first.</p>`;
       if (q.buyout != null) {
@@ -581,7 +585,7 @@ function askDecision() {
         const d = SPACES[i].district;
         h += `<button class="pick" data-c="${i}" ${price > pl.cash ? 'disabled' : ''}>${d ? swatch(d) : '<span class="swatch" style="background:#7d6b5a"></span>'}<span>${esc(SPACES[i].name)}<small>${d ? DISTRICT[d].name + ownedNote(d) : 'Railway'}</small></span><span class="cost">${money(price)}</span></button>`;
       }
-      h += `</div><div class="buttons"><button class="secondary" data-c="pass">Not today</button></div>`;
+      h += `</div><div class="buttons stick"><button class="secondary" data-c="pass">Not today</button></div>`;
       break;
     }
     case 'yard': {
@@ -590,7 +594,7 @@ function askDecision() {
         const c = G.canBuild(s, p, i, 0.5);
         h += `<button class="pick" data-c="${i}" ${c.ok ? '' : 'disabled'}>${swatch(SPACES[i].district)}<span>${esc(SPACES[i].name)}<small>${s.level[i] < G.RULES.maxLevel ? `${G.LEVEL_NAMES[s.level[i] + 1]}: rent ${money(G.rentFor(s, i))} → ${money(G.rentFor(s, i, s.level[i] + 1))}` : 'Built as tall as it goes'}${!c.ok && c.reason && s.level[i] < G.RULES.maxLevel ? ' · ' + esc(c.reason) : ''}</small></span><span class="cost">${c.cost != null ? money(c.cost) : ''}</span></button>`;
       }
-      h += `</div><div class="buttons"><button class="secondary" data-c="pass">Not today</button></div>`;
+      h += `</div><div class="buttons stick"><button class="secondary" data-c="pass">Not today</button></div>`;
       break;
     }
     case 'hall': {
@@ -604,6 +608,7 @@ function askDecision() {
     }
   }
   const body = openSheet(h, { closable: q.kind !== 'rent' && q.kind !== 'hall' ? true : false, onClose: later });
+  if (q.kind === 'buy' || q.kind === 'rent') ring(q.at);
   body.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
     const c = b.dataset.c;
     decideWith(/^\d+$/.test(c) ? +c : c);

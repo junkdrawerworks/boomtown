@@ -207,6 +207,32 @@ assert.deepEqual(await page.$$eval('#actions .row button', bs => bs.filter(b => 
   [], 'a button in the middle of the board wraps onto two lines at 375 px');
 await page.setViewportSize({ width: 390, height: 844 });
 
+// A question about a lot rings the lot on the board, and its answers stay in view while the sheet scrolls, even on a
+// phone held sideways, without covering the end of the rent table.
+const RENT = `const at = Object.keys(s.owner).map(Number).find(i => s.owner[i] > 0 && s.level[i] === 0 && G.buyoutPrice(s, i) != null);
+  s.players[0].pos = at; s.dice = [3, 4]; s.phase = 'decide';
+  s.pending = { kind: 'rent', at, owner: s.owner[at], rent: G.rentFor(s, at), buyout: G.buyoutPrice(s, at) };`;
+await page.setViewportSize({ width: 844, height: 390 });
+await scene(RENT);
+await page.waitForSelector('#sheet [data-c="pay"]');
+{
+  const at = await page.evaluate(() => window.boomtown.state.pending.at);
+  const ring = await page.$eval('#board .focus-ring', r => { const b = r.getBBox(); return { x: b.x, y: b.y }; }).catch(() => null);
+  const cell = await page.$eval(`#board .cell[data-i="${at}"] .bg`, r => { const b = r.getBBox(); return { x: b.x, y: b.y }; });
+  assert.ok(ring && Math.abs(ring.x - cell.x - 3) < 1 && Math.abs(ring.y - cell.y - 3) < 1, 'the lot the rent is for is not ringed on the board');
+  const fits = () => page.$eval('#sheet', sh => { const v = sh.getBoundingClientRect(), b = sh.querySelector('[data-c="pay"]').getBoundingClientRect(); return sh.scrollHeight > sh.clientHeight && b.top >= v.top && b.bottom <= v.bottom; });
+  assert.equal(await fits(), true, "the rent sheet's Pay button is out of view sideways");
+  await page.$eval('#sheet', sh => { sh.scrollTop = sh.scrollHeight; });
+  assert.equal(await page.$eval('#sheet .facts tr:last-child td', td => { const r = td.getBoundingClientRect(); return document.elementFromPoint(r.left + 4, r.top + r.height / 2) === td; }), true,
+    'the answers cover the last row of the rent table');
+}
+await page.setViewportSize({ width: 390, height: 844 });
+await scene();
+await page.click('#board .cell[data-i="17"]');
+assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');
+await page.click('#sheet [data-close]');
+assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 0, 'the ring stays after the sheet closes');
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });

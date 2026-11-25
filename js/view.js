@@ -140,6 +140,9 @@ export function createBoard(svg, { onCell } = {}) {
     marksG.innerHTML = m;
   };
 
+  // Ring one space (or none) without changing the other marks.
+  view.focus = i => { if (view.last) view.render(view.last, { ...view.lastMarks, focus: i }); };
+
   view.placeTokens = s => {
     s.players.forEach((pl, p) => {
       const [x, y] = tokenPos(p, view.shown[p], s.players);
