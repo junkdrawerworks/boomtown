@@ -148,6 +148,35 @@ assert.ok(box.width >= 370, 'the board uses the width of the phone');
 // Fits a phone: nothing scrolls sideways.
 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the page scrolls sideways on a phone');
 
+// Scenes: a seeded bot game played to a round and handed to a person in seat 0 (as tools/screenshots.mjs does), with
+// `setup`, the body of a function of s and G, run on it before it starts.
+const scene = async (setup = '', { seed = 11, round = 14 } = {}) => {
+  await page.evaluate(async ([seed, round, setup]) => {
+    const { G } = window.boomtown;
+    const { botStep } = await import('./js/bots.js');
+    const names = [['You', 'gus'], ['Rusty', 'rusty'], ['Mabel', 'mabel'], ['Dot', 'dot']];
+    const s = G.newGame({ seats: names.map(([name, bot], k) => ({ name, kind: 'bot', bot, token: k })), seed });
+    while (!(s.round === round && s.turn === 0 && s.phase === 'roll')) botStep(s);
+    s.players[0].kind = 'human'; s.players[0].bot = null;
+    new Function('s', 'G', setup)(s, G);
+    window.boomtown.start(s, true);
+  }, [seed, round, setup]);
+  await page.waitForTimeout(300);
+};
+
+// Every player's card keeps the same two rows, whatever the amounts: name and cash, then worth or what they owe.
+await scene('s.players[0].cash = 12345; s.players[2].cash = 0; s.players[2].debt = 1230;');
+for (const width of [390, 375]) {
+  await page.setViewportSize({ width, height: width === 375 ? 667 : 844 });
+  await page.waitForTimeout(200);
+  const chips = await page.$$eval('.chip', cs => cs.map(c => ({ h: c.offsetHeight, nm: c.querySelector('.nm').getBoundingClientRect().top, cash: c.querySelector('.cash').getBoundingClientRect().top, text: c.textContent.replace(/\s+/g, ' ').trim() })));
+  assert.equal(new Set(chips.map(c => c.h)).size, 1, `player cards differ in height at ${width}px: ${JSON.stringify(chips)}`);
+  for (const c of chips) assert.ok(Math.abs(c.nm - c.cash) < 6, `cash is not beside the name at ${width}px: ${c.text}`);
+  assert.deepEqual(await page.$$eval('.chip .nm, .chip .sub', es => es.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)), [], `card text is cut off at ${width}px`);
+  assert.match(chips[2].text, /owes \$1,230/, 'a card with a loan says what is owed');
+}
+await page.setViewportSize({ width: 390, height: 844 });
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });

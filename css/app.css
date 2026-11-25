@@ -128,22 +128,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .detours { font-size: 12px; font-weight: 700; color: var(--muted); }
 
 /* players and the log */
-.side { width: var(--bw); display: flex; flex-direction: column; gap: 8px; }
+/* On a short phone the board is narrower than the screen; the players' cards still take the width they need. */
+.side { width: max(var(--bw), min(100%, 480px)); display: flex; flex-direction: column; gap: 8px; }
 .players { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .chip {
   background: var(--card); border: 2.5px solid var(--ink); border-radius: 12px; padding: 6px 8px;
-  display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; position: relative;
-  box-shadow: 0 3px 0 #0005; min-width: 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 19px 18px; column-gap: 8px; align-items: center;
+  box-shadow: 0 3px 0 #0005; min-width: 0; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .chip.now { outline: 3px solid var(--gold); outline-offset: 1px; }
 .chip .tk { grid-row: span 2; display: grid; }
-.chip .nm { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chip .nm small { font-weight: 600; color: var(--muted); font-size: 11px; }
-.chip .money { font-size: 13px; font-variant-numeric: tabular-nums; display: flex; gap: 8px; flex-wrap: wrap; }
-.chip .cash { font-weight: 800; }
+.chip .r { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.chip .nm { flex: 1; font-weight: 800; font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+.chip .cash { font-weight: 800; font-size: 13.5px; }
+.chip .sub { flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .chip .debt { color: var(--bad); font-weight: 800; }
-.chip .worth { color: var(--muted); font-weight: 600; }
-.chip .dt { position: absolute; top: 5px; right: 7px; font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+.chip .worth { color: var(--muted); }
+.chip .dt { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
 .log {
   list-style: none; margin: 0; padding: 8px 10px; background: #0000002a; border-radius: 10px; color: var(--paper);
   font-size: 13px; max-height: 92px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 2px;

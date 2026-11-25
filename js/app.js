@@ -229,11 +229,12 @@ function drawPlayers() {
   const el = $('players');
   el.innerHTML = s.players.map((pl, p) => {
     const worth = G.netWorth(s, p);
-    return `<div class="chip${p === s.turn && s.phase !== 'over' ? ' now' : ''}" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${pl.detours} detours">
+    const detours = `${pl.detours} detour${pl.detours === 1 ? '' : 's'}`;
+    // Two rows that never change shape: name and cash, then what they're worth, or what they owe while they owe it.
+    return `<div class="chip${p === s.turn && s.phase !== 'over' ? ' now' : ''}" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
       <span class="tk">${art.tokenSvg(pl.token, 30)}</span>
-      <span class="nm">${esc(pl.name)}</span>
-      <span class="money"><span class="cash">${money(pl.cash)}</span>${pl.debt ? `<span class="debt">owes ${money(pl.debt)}</span>` : ''}<span class="worth">worth ${money(worth)}</span></span>
-      <span class="dt" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
+      <span class="r"><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span></span>
+      <span class="r">${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth">worth ${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span></span>
     </div>`;
   }).join('');
 }
