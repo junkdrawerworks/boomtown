@@ -1,0 +1,14 @@
+{
+  "name": "boomtown",
+  "private": true,
+  "type": "module",
+  "description": "Buy land in a town that isn't built yet. Richest on Founders' Day wins.",
+  "scripts": {
+    "test": "node --test test/unit.test.mjs && node test/e2e.mjs",
+    "sim": "node test/sim.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "upng-js": "^2.1.0"
+  }
+}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Boomtown</title>
+  <meta name="description" content="An around-the-board game in a town that isn't built yet. Buy lots, build houses, shops and blocks, and be the richest in town on Founders' Day. Play the townsfolk or pass the phone.">
+  <meta property="og:title" content="Boomtown">
+  <meta property="og:description" content="Buy land in a town that isn't built yet. Richest on Founders' Day wins.">
+  <meta property="og:image" content="https://boomtown.junkdrawer.works/og.png">
+  <meta property="og:url" content="https://boomtown.junkdrawer.works/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#21402f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="preload" href="fonts/alfa-slab-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/libre-franklin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <noscript><p class="noscript">Boomtown needs JavaScript to roll the dice.</p></noscript>
+
+  <div id="app" hidden>
+    <header class="top">
+      <span class="wordmark">Boomtown</span>
+      <span class="round" id="round"></span>
+      <button class="icon-btn" id="logBtn" aria-label="What happened">☷</button>
+      <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
+    </header>
+    <main class="play">
+      <div class="board-wrap">
+        <svg id="board" role="group" aria-label="The board"></svg>
+        <div class="center" id="center">
+          <div class="dice" id="dice"></div>
+          <p class="say" id="say" aria-live="polite"></p>
+          <div class="actions" id="actions"></div>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="players" id="players"></div>
+        <ol class="log" id="log" aria-label="What happened"></ol>
+      </aside>
+    </main>
+  </div>
+
+  <!-- The title screen -->
+  <section class="screen" id="title" hidden>
+    <div class="title-card">
+      <h1><span>Boom</span>town</h1>
+      <p class="lede">Buy land in a town that isn't built yet. Build on it, collect rent, and be the richest in town on Founders' Day.</p>
+      <button class="primary big" id="resumeBtn" hidden>Carry on</button>
+      <h2>Who's playing?</h2>
+      <div class="seats" id="seats"></div>
+      <h2>How long a game?</h2>
+      <div class="seg" id="lengths">
+        <button data-len="short" aria-pressed="false"><b>Short</b><span id="len-short"></span></button>
+        <button data-len="standard" aria-pressed="true"><b>Standard</b><span id="len-standard"></span></button>
+        <button data-len="long" aria-pressed="false"><b>Long</b><span id="len-long"></span></button>
+      </div>
+      <button class="primary big" id="startBtn">Break ground</button>
+      <div class="title-links">
+        <button class="link" id="rulesBtn">How to play</button>
+        <span aria-hidden="true">·</span>
+        <button class="link" id="recordsBtn">Records</button>
+      </div>
+      <footer class="jd-foot">
+        <a href="https://junkdrawer.works/">Part of junkdrawer.works</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://junkdrawer.works/privacy.html">Privacy</a>
+      </footer>
+    </div>
+  </section>
+
+  <!-- A sheet that slides up for questions, headlines and lot details -->
+  <div class="sheet-wrap" id="sheetWrap" hidden>
+    <div class="scrim" id="scrim"></div>
+    <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div id="sheetBody"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
