@@ -300,6 +300,7 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
   assert.equal(price, true, 'Dot did not force the sale this scene sets up');
   const since = new RegExp(`^Since your turn: Dot made you sell ${name} for \\$[\\d,]+ \\(\\$100 of it went to your loan\\)\\.`);
   assert.match(await page.textContent('#actions .since'), since, 'your turn does not say what happened since your last one');
+  assert.match(await page.textContent('#log'), /Dot made you sell/, "the log says 'made You sell'");
   await page.reload();
   await page.click('#resumeBtn');
   await page.waitForSelector('#actions button:has-text("Roll the dice")');

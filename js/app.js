@@ -40,6 +40,7 @@ const money = n => (n < 0 ? `−$${(-n).toLocaleString('en-US')}` : `$${n.toLoca
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const nm = p => esc(s.players[p].name);
 const poss = p => (s.players[p].name === 'You' ? 'your' : `${nm(p)}'s`);
+const obj = p => (s.players[p].name === 'You' ? 'you' : nm(p)); // a player in the middle of a sentence
 const colorOf = p => art.PLAYER_COLORS[s.players[p].token];
 const save = () => { if (s) store.set(KEY, s); };
 const humans = () => s.players.filter(p => p.kind === 'human').length;
@@ -498,14 +499,14 @@ function describe(e) {
       if (e.why === 'an inheritance') return `${nm(e.p)} inherited ${money(e.amount)}.`;
       return null;
     case 'pay':
-      if (typeof e.to === 'number') return e.why.startsWith('rent') ? `${nm(e.from)} paid ${nm(e.to)} ${money(e.amount)} ${esc(e.why)}.` : null;
+      if (typeof e.to === 'number') return e.why.startsWith('rent') ? `${nm(e.from)} paid ${obj(e.to)} ${money(e.amount)} ${esc(e.why)}.` : null;
       if (e.to === 'kitty') return `${nm(e.from)} paid ${money(e.amount)} for ${esc(e.why)}, into the kitty.`;
       return null;
-    case 'loan': return `The bank lent ${nm(e.p)} ${money(e.amount)}.`;
+    case 'loan': return `The bank lent ${obj(e.p)} ${money(e.amount)}.`;
     case 'repaid': return `${money(e.amount)} went to paying off ${poss(e.p)} loan.`;
     case 'interest': return `${money(e.amount)} interest went on ${poss(e.p)} loan.`;
     case 'buy': return `${nm(e.p)} bought ${sp(e.at)} for ${money(e.price)}.`;
-    case 'buyout': return `${nm(e.p)} made ${nm(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
+    case 'buyout': return `${nm(e.p)} made ${obj(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
     case 'build': return `${nm(e.p)} built a ${G.LEVEL_NAMES[e.level].toLowerCase()} on ${sp(e.at)}.`;
     case 'sell': return `${nm(e.p)} sold a ${G.LEVEL_NAMES[e.level + 1].toLowerCase()} on ${sp(e.at)} back for ${money(e.refund)}.`;
     case 'card': return `The Gazette: ${esc(CARD[e.card].head)}.`;
