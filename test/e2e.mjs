@@ -284,6 +284,31 @@ assert.equal(await page.textContent('#round'), 'Last round', 'the header does no
 assert.equal(await page.$eval('#round', el => el.classList.contains('last')), true, 'the last round is not marked out');
 assert.match(await page.textContent('#say'), /Founders' Day after this round\./, "the last round's first turn doesn't say Founders' Day comes after it");
 
+// What the townsfolk did to you while you waited is waiting for you when your turn comes round, even after a reload,
+// and goes once you roll: here Dot forces a sale of one of your lots, and part of the price pays off your loan.
+await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0 && (s.owner[j] = 0, G.buyoutPrice(s, j) != null));
+  s.players[0].debt = 100; s.players[3].cash = 5000; s.players[3].pos = i;
+  s.turn = 3; s.dice = [1, 2]; s.phase = 'decide';
+  s.pending = { kind: 'rent', at: i, owner: 0, rent: G.rentFor(s, i), buyout: G.buyoutPrice(s, i) };
+  window.lost = i;`);
+await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 20000 });
+{
+  const { name, price } = await page.evaluate(() => {
+    const s = window.boomtown.state;
+    return { name: window.boomtown.G && document.querySelector(`#board .cell[data-i="${window.lost}"]`).getAttribute('aria-label').split(',')[0], price: s.owner[window.lost] === 3 };
+  });
+  assert.equal(price, true, 'Dot did not force the sale this scene sets up');
+  const since = new RegExp(`^Since your turn: Dot made you sell ${name} for \\$[\\d,]+ \\(\\$100 of it went to your loan\\)\\.`);
+  assert.match(await page.textContent('#actions .since'), since, 'your turn does not say what happened since your last one');
+  await page.reload();
+  await page.click('#resumeBtn');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")');
+  assert.match(await page.textContent('#actions .since'), since, 'what happened since your turn is lost on a reload');
+  await page.click('#actions button:has-text("Roll the dice")');
+  await page.waitForSelector('.move-btn');
+  assert.equal(await page.$$eval('#actions .since', e => e.length), 0, 'what happened since your turn stays after you roll');
+}
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });

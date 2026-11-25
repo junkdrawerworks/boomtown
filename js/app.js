@@ -167,6 +167,8 @@ function render() {
   a.innerHTML = '';
   if (!human) return;
   if (s.phase === 'roll') {
+    const since = sinceLine(p);
+    if (since) { const el = document.createElement('p'); el.className = 'since'; el.innerHTML = since; a.append(el); }
     a.append(btn('Roll the dice', 'primary big', onRoll));
     if (OWNABLE.some(i => s.owner[i] === p)) a.append(btn('Your lots', 'ghost', () => showLots()));
   } else if (s.phase === 'move') {
@@ -292,6 +294,7 @@ async function run() {
 
 async function onRoll() {
   const my = gen;
+  if (s.since) s.since[s.turn] = [];
   const ev = G.roll(s);
   save();
   await play(ev, my);
@@ -359,6 +362,7 @@ async function play(events, my = gen) {
       if (my !== gen) return;
       const line = describe(e);
       addLog(line);
+      noteSince(e);
       switch (e.t) {
         case 'roll': {
           sfx.dice();
@@ -404,7 +408,8 @@ async function play(events, my = gen) {
         case 'loan': note += ` ${line}`; render(); await wait(400 * k); break;
         case 'buy': case 'buyout':
           sfx.stamp(); render(); view.pop(e.at); note = line; $('say').innerHTML = note;
-          await wait(550 * k);
+          // A person made to sell gets long enough to read it.
+          await wait((e.t === 'buyout' && s.players[e.from].kind === 'human' ? 1200 : 550) * k);
           break;
         case 'build': case 'sell':
           if (e.t === 'build') sfx.build(); else sfx.pay();
@@ -431,6 +436,54 @@ async function play(events, my = gen) {
     busy = false;
   }
   render();
+}
+
+// ---------- since your turn ----------
+// While others play, what happens to each person off their turn (a lot they were made to sell, rent paid to them, land
+// moving where they own lots) is kept in s.since[p], saved with the game, and told to them in one line above Roll when
+// their turn comes round. It goes once they roll.
+let lastSince = null; // the entry the event just before made, which a 'repaid' after it adds to
+function noteSince(e) {
+  const prev = lastSince;
+  lastSince = null;
+  const off = q => s.players[q]?.kind === 'human' && q !== s.turn;
+  const list = q => ((s.since ||= [])[q] ||= []);
+  switch (e.t) {
+    case 'pay':
+      if (typeof e.to !== 'number' || !off(e.to)) break;
+      if (e.why.startsWith('rent')) list(e.to).push(lastSince = { t: 'rent', from: e.from, amount: e.amount, loan: 0 });
+      else if (e.why.startsWith('buying')) list(e.to).push(lastSince = { t: 'sale', by: e.from, amount: e.amount, loan: 0, at: null });
+      break;
+    case 'repaid': if (prev && off(e.p)) { prev.loan += e.amount; lastSince = prev; } break;
+    case 'buyout': if (off(e.from)) { const x = list(e.from).find(y => y.t === 'sale' && y.at == null); if (x) x.at = e.at; } break;
+    case 'land':
+      s.players.forEach((_, q) => {
+        if (!off(q) || !LOTS_IN[e.d].some(i => s.owner[i] === q)) return;
+        const x = list(q).find(y => y.t === 'land' && y.d === e.d);
+        if (x) x.to = e.to; else list(q).push({ t: 'land', d: e.d, from: e.from, to: e.to });
+      });
+      break;
+  }
+}
+function sinceLine(p) {
+  const l = s.since?.[p];
+  if (!l?.length) return '';
+  const loan = x => (x.loan >= x.amount ? ' (it went to your loan)' : x.loan ? ` (${money(x.loan)} of it went to your loan)` : '');
+  const parts = l.filter(x => x.t === 'sale' && x.at != null).map(x => `${nm(x.by)} made you sell ${esc(SPACES[x.at].name)} for ${money(x.amount)}${loan(x)}.`);
+  const rent = new Map();
+  for (const x of l.filter(y => y.t === 'rent')) {
+    const r = rent.get(x.from) || { amount: 0, loan: 0 };
+    r.amount += x.amount; r.loan += x.loan;
+    rent.set(x.from, r);
+  }
+  for (const [q, r] of rent) parts.push(`${nm(q)} paid you ${money(r.amount)}${loan(r)}.`);
+  for (const x of l.filter(y => y.t === 'land' && y.to !== y.from)) {
+    const n = LOTS_IN[x.d].filter(i => s.owner[i] === p).length;
+    if (n) parts.push(`${DISTRICT[x.d].name} land went ${x.to > x.from ? 'up' : 'down'}, where you own ${n === 1 ? 'a lot' : `${n} lots`}.`);
+  }
+  if (!parts.length) return '';
+  const more = parts.length > 4 ? ` And ${parts.length - 4} more: see what happened.` : '';
+  return `<b>Since your turn:</b> ${parts.slice(0, 4).join(' ')}${more}`;
 }
 
 function describe(e) {
