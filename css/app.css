@@ -68,6 +68,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .tiny { font-size: 17px; fill: var(--ink); }
 #board .corner-label { font-size: 16.5px; fill: var(--ink); }
 #board .corner-sub { font: 800 15px var(--sans); fill: var(--muted); letter-spacing: .04em; }
+#board.tall .corner-sub { font-size: 19px; }
+#board.tall .dest text { font-size: 28px; }
 #board .arrow { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 #board .cell { cursor: pointer; outline: none; transform-box: fill-box; transform-origin: center; }
 #board .cell:focus-visible .bg { stroke: var(--brick); stroke-width: 6; }

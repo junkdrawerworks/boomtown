@@ -2,11 +2,14 @@
 // (money floating up, a building going up) animated over it.
 
 import { SPACES, DISTRICT, N, cellRect, SIZE } from './board.js';
-import { landValue, rentFor, LEVEL_NAMES } from './game.js';
+import { landValue, rentFor, LEVEL_NAMES, RULES } from './game.js';
 import * as art from './art.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const TOKEN_SCALE = 1.35;
+const usd = n => `$${n.toLocaleString('en-US')}`; // as money() in app.js writes it
+// A player's colour a fifth of the way to ink, for the rent tags: white on it reads at 5:1 or better.
+const deepen = hex => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * 0.8 + parseInt(art.INK.slice(k, k + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
 
 // The board's height in board units: 900 makes it square; more makes it tall, for a phone held upright.
 let H = SIZE;
@@ -64,6 +67,7 @@ export function createBoard(svg, { onCell } = {}) {
 
   const drawFrame = () => {
     svg.setAttribute('viewBox', `0 0 ${SIZE} ${H}`);
+    svg.classList.toggle('tall', H > SIZE); // drawn smaller on screen, so its text is set bigger
     svg.querySelector('.paper').setAttribute('height', H);
     svg.querySelector('.frame').innerHTML = `
       <rect x="150" y="150" width="600" height="${H - 300}" fill="none" stroke="${art.INK}" stroke-width="3"/>
@@ -112,18 +116,22 @@ export function createBoard(svg, { onCell } = {}) {
     while (view.tokenEls.length > s.players.length) view.tokenEls.pop().remove();
     view.placeTokens(s);
     // Destination badges and build badges.
+    // The tall board is drawn smaller on a phone, so its badges are bigger, and sit a little further in.
+    const big = H > SIZE, R = big ? 24 : 19, B = big ? 17 : 13, inset = big ? 5 : 0;
     let m = '';
     for (const d of dests) {
       const L = layout(d.to), r = L.r;
+      const bx = L.badge[0] + (L.badge[0] < r.x + r.w / 2 ? inset : -inset), by = L.badge[1] + inset;
       m += `<g class="dest${d.usable === false ? ' off' : ''}" data-i="${d.to}">
         <rect x="${r.x + 4}" y="${r.y + 4}" width="${r.w - 8}" height="${r.h - 8}" rx="8"/>
-        <g transform="translate(${L.badge[0]} ${L.badge[1]})"><circle r="19"/><text y="7">${d.label}</text></g></g>`;
+        <g transform="translate(${bx} ${by})"><circle r="${R}"/><text y="${big ? 10 : 7}">${d.label}</text></g></g>`;
     }
     for (const i of buildable) {
       const L = layout(i), r = L.r;
-      const bx = r.side === 'right' ? r.x + 38 : r.x + r.w - (r.side === 'left' ? 38 : 18);
-      const by = r.side === 'bottom' ? r.y + 40 : r.y + 18;
-      m += `<g class="can-build" transform="translate(${bx} ${by})"><circle r="13"/><path d="M-6 0 H6 M0 -6 V6"/></g>`;
+      const bx = r.side === 'right' ? r.x + 38 : r.x + r.w - (r.side === 'left' ? 38 : 18 + inset);
+      const by = (r.side === 'bottom' ? r.y + 40 : r.y + 18) + inset;
+      const k = Math.round(B * 6 / 13);
+      m += `<g class="can-build" transform="translate(${bx} ${by})"><circle r="${B}"/><path d="M${-k} 0 H${k} M0 ${-k} V${k}"/></g>`;
     }
     if (focus != null) {
       const r = cellRect(focus, H);
@@ -149,28 +157,28 @@ export function createBoard(svg, { onCell } = {}) {
       case 'lot': {
         const lv = s.level[i];
         drawing = o < 0 ? art.forSale() : lv ? art.BUILDINGS[lv](color) : art.sold(color);
-        tag = o >= 0 ? pill(`$${rentFor(s, i)}`, color) : pill(`$${landValue(s, i)}`, '#fffaf0', art.INK);
-        label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, $${landValue(s, i)}.` : `${s.players[o].name}'s ${LEVEL_NAMES[lv].toLowerCase()}, rent $${rentFor(s, i)}.`);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
+        label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, ${usd(landValue(s, i))}.` : `${s.players[o].name}'s ${LEVEL_NAMES[lv].toLowerCase()}, rent ${usd(rentFor(s, i))}.`);
         break;
       }
       case 'depot':
         drawing = art.depot(color);
-        tag = o >= 0 ? pill(`$${rentFor(s, i)}`, color) : pill(`$${sp.price}`, '#fffaf0', art.INK);
-        label = `${sp.name}. ` + (o < 0 ? `For sale, $${sp.price}.` : `${s.players[o].name}'s, rent $${rentFor(s, i)}.`);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
+        label = `${sp.name}. ` + (o < 0 ? `For sale, ${usd(sp.price)}.` : `${s.players[o].name}'s, rent ${usd(rentFor(s, i))}.`);
         break;
       case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
       case 'yard': drawing = art.lumber; tag = `<text class="tiny">BUILD ½</text>`; label = 'Lumberyard: build one level at half price.'; break;
       case 'tax': drawing = art.assessor; label = 'Assessor: pay for every building level you own.'; break;
       case 'payday': drawing = art.payday; label = 'Payday.'; break;
       case 'office': drawing = art.office; label = 'Land Office: buy any empty lot.'; break;
-      case 'square': drawing = art.square; label = `Town Square: take the kitty, $${s.kitty}.`; break;
+      case 'square': drawing = art.square; label = `Town Square: take the kitty, ${usd(s.kitty)}.`; break;
       case 'hall': drawing = art.hall; label = 'City Hall: rezone a district.'; break;
     }
     h += `<g transform="translate(${L.art[0]} ${L.art[1]}) scale(${L.art[2]})">${drawing}</g>`;
     if (r.side === 'corner') {
-      const sub = sp.type === 'payday' ? 'COLLECT $150' : sp.type === 'square' ? `KITTY $${s.kitty}` : '';
+      const sub = sp.type === 'payday' ? (H > SIZE ? usd(RULES.salary) : `COLLECT ${usd(RULES.salary)}`) : sp.type === 'square' ? `KITTY ${usd(s.kitty)}` : '';
       h += `<text class="corner-label" x="${r.x + r.w / 2}" y="${r.y + 122}">${CORNER_LABEL[sp.type]}</text>`;
-      if (sub) h += `<text class="corner-sub" x="${r.x + r.w / 2}" y="${r.y + 140}">${sub}</text>`;
+      if (sub) h += `<text class="corner-sub" x="${r.x + r.w / 2}" y="${r.y + (H > SIZE ? 142 : 140)}">${sub}</text>`;
       if (sp.type === 'payday') h += `<path class="arrow" d="M${r.x + 36} ${r.y + 56} h-24 m8 -7 l-8 7 l8 7"/>`;
     } else if (tag) h += `<g transform="translate(${L.tag[0]} ${L.tag[1]})">${tag}</g>`;
     if (labels[i]) label += ' ' + labels[i];
@@ -178,10 +186,14 @@ export function createBoard(svg, { onCell } = {}) {
     g.setAttribute('aria-label', label);
   }
 
-  const pill = (text, fill, ink = '#fff') => {
-    const w = 14 + text.length * 12.5;
-    return `<rect x="${-w / 2}" y="-14" width="${w}" height="26" rx="13" fill="${fill}" stroke="${art.INK}" stroke-width="2"/>
-      <text class="pill" y="6" fill="${ink}">${text}</text>`;
+  // A price or rent tag, sized to its text: 26 units on the tall board (22 on the square one), smaller for a long
+  // amount so the tag stays inside its cell (`room` units wide). In the slab face a digit or $ is about .69 em wide, a comma .25.
+  const pill = (text, fill, room, ink = '#fff') => {
+    const ems = [...text].reduce((n, c) => n + (c === ',' ? 0.25 : 0.69), 0);
+    const size = Math.min(H > SIZE ? 26 : 22, Math.floor((room - 16) / ems));
+    const w = Math.round(ems * size + 14), h = Math.round(size * 1.18);
+    return `<rect x="${-w / 2}" y="${-h / 2 - 1}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}" stroke="${art.INK}" stroke-width="2"/>
+      <text class="pill" y="${Math.round(size * 0.36) - 1}" fill="${ink}" style="font-size:${size}px">${text}</text>`;
   };
 
   // Hop a piece along a path of spaces.

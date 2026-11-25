@@ -149,16 +149,17 @@ assert.ok(box.width >= 370, 'the board uses the width of the phone');
 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the page scrolls sideways on a phone');
 
 // Scenes: a seeded bot game played to a round and handed to a person in seat 0 (as tools/screenshots.mjs does), with
-// `setup`, the body of a function of s and G, run on it before it starts.
+// `setup`, the body of a function of s, G (js/game.js) and B (js/board.js), run on it before it starts.
 const scene = async (setup = '', { seed = 11, round = 14 } = {}) => {
   await page.evaluate(async ([seed, round, setup]) => {
     const { G } = window.boomtown;
     const { botStep } = await import('./js/bots.js');
+    const B = await import('./js/board.js');
     const names = [['You', 'gus'], ['Rusty', 'rusty'], ['Mabel', 'mabel'], ['Dot', 'dot']];
     const s = G.newGame({ seats: names.map(([name, bot], k) => ({ name, kind: 'bot', bot, token: k })), seed });
     while (!(s.round === round && s.turn === 0 && s.phase === 'roll')) botStep(s);
     s.players[0].kind = 'human'; s.players[0].bot = null;
-    new Function('s', 'G', setup)(s, G);
+    new Function('s', 'G', 'B', setup)(s, G, B);
     window.boomtown.start(s, true);
   }, [seed, round, setup]);
   await page.waitForTimeout(300);
@@ -176,6 +177,23 @@ for (const width of [390, 375]) {
   assert.match(chips[2].text, /owes \$1,230/, 'a card with a loan says what is owed');
 }
 await page.setViewportSize({ width: 390, height: 844 });
+
+// The tall board's tags are big enough to read on a phone, written like every other amount ($1,440), and stay
+// inside their cells; the Payday corner says what Payday pays.
+await scene("B.LOTS_IN.bank.forEach(i => { s.owner[i] = 3; s.level[i] = 3; }); s.land.bank = 1.6;");
+{
+  const tags = await page.$$eval('#board .cell', cells => cells.flatMap(c => {
+    const t = c.querySelector('text.pill');
+    if (!t) return [];
+    const cell = c.querySelector('.bg').getBBox(), tag = t.previousElementSibling.getBoundingClientRect(), box = c.querySelector('.bg').getBoundingClientRect();
+    return [{ text: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), inside: tag.left >= box.left - 0.5 && tag.right <= box.right + 0.5, w: cell.width }];
+  }));
+  const big = tags.filter(t => t.text.replace(/\D/g, '') >= 1000);
+  assert.ok(big.length && big.every(t => /^\$\d{1,3}(,\d{3})+$/.test(t.text)), `amounts of $1,000 and more on the board have no comma: ${JSON.stringify(big)}`);
+  assert.deepEqual(tags.filter(t => !t.inside), [], 'a tag reaches outside its cell');
+  assert.ok(tags.filter(t => t.text.length <= 5).every(t => t.size >= 26), `short tags on the tall board are small: ${JSON.stringify(tags)}`);
+  assert.equal(await page.textContent('#board .cell[data-i="0"] .corner-sub'), '$' + await page.evaluate(() => window.boomtown.G.RULES.salary));
+}
 
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
