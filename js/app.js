@@ -636,7 +636,7 @@ function sinceLine(p) {
 let landMoved = null; // the last 'land' event: a sale's line says how far the land fell
 function describe(e) {
   if (e.t === 'land') landMoved = e;
-  else if (e.t !== 'collect' && e.t !== 'sell') landMoved = null; // a sale's own events are land, collect, sell
+  else if (e.t !== 'collect' && e.t !== 'repaid' && e.t !== 'sell') landMoved = null; // a sale's own: land, collect, repaid, sell
   const sp = i => esc(SPACES[i].name);
   switch (e.t) {
     case 'roll': return `${nm(e.p)} rolled ${e.dice[0]} and ${e.dice[1]}.`;
