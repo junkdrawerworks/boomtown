@@ -159,7 +159,9 @@ for (let k = 0; k < 2000; k++) {
   if (st.phase === 'over') break;
   if (await sheetOpen()) { await answer(); continue; }
   const b = st.kind === 'human' && await page.$('#actions button:has-text("Roll the dice"), .move-btn, #actions button:has-text("End turn"), #actions button:has-text("Decide")');
-  if (b) { await b.click(); await page.waitForTimeout(120); } else await page.waitForTimeout(150);
+  // A sheet can open between the look for one and the tap (a headline, after a move's hop): the tap then waits behind
+  // it, so it gives up soon and the next go round answers the sheet.
+  if (b) { await b.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(120); } else await page.waitForTimeout(150);
 }
 await page.waitForSelector('.standings li', { timeout: 10000 });
 assert.equal(await page.$$eval('.standings li', l => l.length), 2, "Founders' Day ranks both players");
