@@ -58,7 +58,7 @@ function reserve(s) {
 }
 
 // Score where each move would land, for choosing between the dice.
-function scoreSpace(s, to, steps) {
+export function scoreSpace(s, to, steps) {
   const p = s.turn, pl = current(s), sp = SPACES[to], b = me(s);
   let v = 0;
   const passes = pl.pos + steps >= N;
@@ -74,7 +74,7 @@ function scoreSpace(s, to, steps) {
         const rent = rentFor(s, to);
         v -= rent;
         const bo = buyoutPrice(s, to);
-        if (bo != null && pl.cash > bo && buyoutWorth(s, to) * b.buyout >= bo) v += rent + buyoutWorth(s, to) * b.buyout - bo;
+        if (bo != null && s.round < s.rounds && pl.cash > bo && buyoutWorth(s, to) * b.buyout >= bo) v += rent + buyoutWorth(s, to) * b.buyout - bo;
       }
       break;
     }
@@ -122,7 +122,8 @@ export function chooseDecision(s) {
       return after >= reserve(s) * (w > 1.6 ? 0.4 : 1) || (w > 1.2 && after > 40) ? 'buy' : 'pass';
     }
     case 'rent': {
-      if (q.buyout == null || q.buyout > pl.cash) return 'pay';
+      // In the final round a sale costs half as much again as the land adds to worth, and saves only one rent.
+      if (q.buyout == null || q.buyout > pl.cash || s.round >= s.rounds) return 'pay';
       return buyoutWorth(s, q.at) * b.buyout >= q.buyout && pl.cash - q.buyout >= reserve(s) * 0.4 ? 'buyout' : 'pay';
     }
     case 'office': return bestToBuy(s, emptyLots(s), i => landValue(s, i)) ?? 'pass';

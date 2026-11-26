@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../js/game.js';
-import { botStep, BOTS } from '../js/bots.js';
+import { botStep, BOTS, chooseDecision, scoreSpace } from '../js/bots.js';
 import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS } from '../js/board.js';
 import { CARDS } from '../js/cards.js';
 import * as W from '../js/words.js';
@@ -273,4 +273,25 @@ test('a townsperson sells a building to clear only a big loan, and never in the 
   assert.equal(sells(10, 500), true, 'a big loan mid-game still sells');
   assert.equal(sells(10, 200), false, 'a small loan rides');
   for (const round of [18, 19, 20]) assert.equal(sells(round, 900), false, `round ${round} of 20`);
+});
+
+test('in the final round a townsperson never forces a sale: it costs half as much again as it adds to their worth', () => {
+  const setup = round => {
+    const s = botGame('dot', { round });
+    const [a, b, c] = LOTS_IN.hill;
+    s.owner[a] = 0; s.owner[b] = 0; s.owner[c] = 1; // Dot's third Hilltop lot would finish the district
+    s.players[0].cash = 3000;
+    s.players[0].pos = (c - 5 + N) % N;
+    return { s, c };
+  };
+  // Where the move scorer stands: the rent alone, with nothing added for a sale.
+  const { s: early, c } = setup(10);
+  assert.ok(scoreSpace(early, c, 5) > -G.rentFor(early, c), 'mid-game the sale counts for the move');
+  const { s: last } = setup(20);
+  assert.equal(scoreSpace(last, c, 5), -G.rentFor(last, c), 'in the final round only the rent counts');
+  for (const [s, want] of [[early, 'buyout'], [last, 'pay']]) {
+    goTo(s, c);
+    assert.equal(s.pending.kind, 'rent');
+    assert.equal(chooseDecision(s), want, `round ${s.round}`);
+  }
 });
