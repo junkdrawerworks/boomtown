@@ -471,6 +471,31 @@ await scene("Object.keys(s.owner).forEach(i => { if (B.SPACES[i].type === 'lot')
 }
 await page.setViewportSize({ width: 390, height: 844 });
 
+// In Your lots the build button says Build over its price, not "+$50", which reads as money coming in (as "Sure?
+// +$25" does on a sale). At 375 px no row is cut off or reaches outside its box, and Sell keeps to one line.
+await page.setViewportSize({ width: 375, height: 667 });
+await scene("Object.keys(s.owner).forEach((i, k) => { if (B.SPACES[i].type === 'lot') { s.owner[i] = 0; s.level[i] = k % 3; } }); s.players[0].cash = 20000; s.phase = 'manage'; s.dice = [1, 2];");
+{
+  await page.click('#actions button:has-text("Build"), #actions button:has-text("Your lots")');
+  const builds = await page.$$eval('#sheet [data-build]', bs => bs.map(b => [b.textContent, b.getAttribute('aria-label')]));
+  assert.ok(builds.length > 10 && builds.every(([t, l]) => /^Build\$\d+$/.test(t) && /^Build on .+ for \$\d+$/.test(l)), `a build button doesn't say Build: ${JSON.stringify(builds)}`);
+  const bad = await page.$$eval('#sheet .pick', rows => rows.flatMap(r => {
+    const box = r.getBoundingClientRect(), out = [];
+    for (const el of r.querySelectorAll('*')) {
+      const b = el.getBoundingClientRect();
+      if (el.scrollWidth > el.clientWidth + 1 || (b.width && (b.right > box.right + 0.5 || b.left < box.left - 0.5))) out.push(el.textContent);
+    }
+    for (const b of r.querySelectorAll('.sell, .build .kick')) {
+      const g = document.createRange(); g.selectNodeContents(b);
+      if (new Set([...g.getClientRects()].map(x => Math.round(x.top))).size > 1) out.push(b.textContent);
+    }
+    return out;
+  }));
+  assert.deepEqual(bad, [], 'a row of Your lots is cut off at 375 px');
+  await page.click('#sheet [data-close]');
+}
+await page.setViewportSize({ width: 390, height: 844 });
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {

@@ -242,6 +242,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pick small.warn, .sheet .note.warn { color: var(--brick-deep); }
 .pick .cost { font-weight: 800; font-variant-numeric: tabular-nums; }
 .pick .sell { padding: 6px 9px; font-size: 14px; white-space: nowrap; }
+/* Build's price, with a small Build over it: a + would read as money coming in, as it does on Sure? +$25. */
+.pick .build { padding: 3px 9px 5px; line-height: 1.1; white-space: nowrap; }
+.pick .build .kick { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .pick .sell.sure { background: #fff; color: var(--brick-deep); border-color: var(--brick-deep); box-shadow: 0 3px 0 var(--brick-deep); }
 
 /* the Gazette */

@@ -776,7 +776,7 @@ function showLots(at = null) {
     h += `<div class="pick" data-lot="${i}" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
       <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small>${G.buyoutPrice(s, i) != null ? `<small class="warn">Empty: a rival can make you sell for ${money(G.buyoutPrice(s, i))}</small>` : ''}</span>
       ${canAct && G.canSell(s, p, i) ? `<button class="secondary sell" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} back for ${money(G.sellValue(i))}">Sell ${money(G.sellValue(i))}</button>` : '<span></span>'}
-      ${canAct && s.phase === 'manage' && lv < G.RULES.maxLevel ? `<button class="primary" data-build="${i}" ${c.ok ? '' : 'disabled'} aria-label="Build on ${esc(sp.name)} for ${money(G.buildCost(i))}" style="padding:6px 9px">+${money(G.buildCost(i))}</button>` : '<span></span>'}
+      ${canAct && s.phase === 'manage' && lv < G.RULES.maxLevel ? `<button class="primary build" data-build="${i}" ${c.ok ? '' : 'disabled'} aria-label="Build on ${esc(sp.name)} for ${money(G.buildCost(i))}"><span class="kick">Build</span>${money(G.buildCost(i))}</button>` : '<span></span>'}
     </div>`;
   }
   if (!mine.length) h += '<p>No lots yet.</p>';
