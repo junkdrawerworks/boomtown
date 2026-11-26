@@ -375,6 +375,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
 .seg b { font-size: 15px; }
 .seg span { font-size: 12px; opacity: .8; }
+/* The pace, beside the game's length: a label and two small buttons on one line. */
+.pace { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.pace > span { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.pace .seg { grid-template-columns: repeat(2, 1fr); width: 66.66%; }
+.pace .seg button { padding: 5px 4px; font-weight: 700; }
 .title-links { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 10px; color: var(--muted); }
 .link { background: none; border: 0; text-decoration: underline; font-weight: 700; color: var(--ink); padding: 6px; }
 

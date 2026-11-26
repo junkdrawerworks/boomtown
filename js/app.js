@@ -157,6 +157,7 @@ function drawLengths() {
     $('len-' + len).textContent = `${G.ROUNDS[len][n]} rounds`;
     document.querySelector(`[data-len="${len}"]`).setAttribute('aria-pressed', String(prefs.len === len));
   }
+  for (const b of document.querySelectorAll('[data-speed]')) b.setAttribute('aria-pressed', String((prefs.speed === 'fast' ? 'fast' : 'normal') === b.dataset.speed));
   const ok = prefs.seats.filter(x => x.who !== 'none').length >= 2;
   $('startBtn').disabled = !ok;
   $('startBtn').textContent = ok ? 'Break ground' : 'Pick at least two players';
@@ -166,6 +167,15 @@ $('lengths').addEventListener('click', e => {
   const b = e.target.closest('button[data-len]');
   if (!b) return;
   prefs.len = b.dataset.len;
+  store.set(PREFS, prefs);
+  drawLengths();
+});
+
+// The pace, as in the menu: how long the game lingers on each thing that happens.
+$('paces').addEventListener('click', e => {
+  const b = e.target.closest('button[data-speed]');
+  if (!b) return;
+  prefs.speed = b.dataset.speed;
   store.set(PREFS, prefs);
   drawLengths();
 });

@@ -87,6 +87,13 @@ assert.equal(await page.isVisible('#title'), true, 'the title screen shows first
 await page.evaluate(() => localStorage.setItem('boomtown.prefs', JSON.stringify({ speed: 'fast', sound: false, len: 'short', seats: [{ who: 'you', name: 'You' }, { who: 'mabel' }, { who: 'none' }, { who: 'none' }] })));
 await page.reload();
 assert.equal(await page.textContent('#len-short'), '18 rounds', 'two players get more rounds');
+// The pace is beside the game's length, as well as in the menu: a tap on Easy or Fast changes it, and the other.
+assert.deepEqual(await page.$$eval('#paces button', bs => bs.map(b => [b.textContent, b.getAttribute('aria-pressed')])), [['Easy', 'false'], ['Fast', 'true']]);
+await page.click('#paces [data-speed="normal"]');
+assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('boomtown.prefs')).speed), 'normal', 'a tap on Easy on the title screen does not change the pace');
+assert.deepEqual(await page.$$eval('#paces button', bs => bs.map(b => b.getAttribute('aria-pressed'))), ['true', 'false']);
+await page.click('#paces [data-speed="fast"]');
+assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('boomtown.prefs')).speed), 'fast', 'a tap on Fast on the title screen does not change the pace');
 {
   const [dot, link] = await page.$$eval('.title-links > span, #rulesBtn', es => es.map(e => { const g = document.createRange(); g.selectNodeContents(e); const r = g.getBoundingClientRect(); return r.top + r.height / 2; }));
   assert.ok(Math.abs(dot - link) < 2, `the dot between the title screen's links sits ${(link - dot).toFixed(1)} px off their middle`);
