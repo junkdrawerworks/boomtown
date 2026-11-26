@@ -815,6 +815,27 @@ await scene("Object.keys(s.owner).forEach((i, k) => { if (B.SPACES[i].type === '
 }
 await page.setViewportSize({ width: 390, height: 844 });
 
+// When land moves, every lot in the district says how far: here a house goes up, and all three lots on its street show
+// the land's rise, in green.
+await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.owner[j] < 0 && s.land[B.SPACES[j].district] < 2.5); s.owner[i] = 0;
+  s.players[0].cash = 5000; s.players[0].debt = 0; s.phase = 'manage'; s.dice = [1, 2]; window.lot = i;`);
+{
+  await page.evaluate(() => {
+    window.floats = [];
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.classList?.contains('float')) window.floats.push([n.textContent, n.getAttribute('fill'), n.getAttribute('x'), n.getAttribute('y')]); })))
+      .observe(document.querySelector('#board .fx'), { childList: true });
+  });
+  const lot = await page.evaluate(() => window.lot);
+  await page.click(`#board .cell[data-i="${lot}"]`);
+  await page.click('#sheet [data-build]');
+  await page.waitForFunction(() => !window.boomtown.busy);
+  const rise = await page.evaluate(() => Math.round(window.boomtown.G.RULES.rise * 100));
+  const floats = (await page.evaluate(() => window.floats)).filter(f => f[0] === `+${rise}%`);
+  assert.equal(floats.length, 3, `a building doesn't show the land rising on all three lots of its street: ${JSON.stringify(await page.evaluate(() => window.floats))}`);
+  assert.equal(new Set(floats.map(f => f[2] + ',' + f[3])).size, 3, 'the land floats are not on three different lots');
+  assert.ok(floats.every(f => f[1] === '#1f7a46'), 'land going up is not shown in green');
+}
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {

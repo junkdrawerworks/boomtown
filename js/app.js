@@ -662,7 +662,12 @@ async function play(events, my = gen, before = null) {
           render(); view.pop(e.at); note = line; setSay(note);
           await nap(500 * k);
           break;
-        case 'land': render(); break;
+        case 'land': {
+          // Every lot in the district says how far its land moved, so the street can be seen rising when someone builds.
+          const by = Math.round((e.to - e.from) * 100);
+          for (const i of LOTS_IN[e.d]) view.float(i, `${by > 0 ? '+' : '−'}${Math.abs(by)}%`, by > 0 ? '#1f7a46' : '#b23a2a', 1500, 'small');
+          break;
+        }
         case 'card': {
           sf.paper();
           render();

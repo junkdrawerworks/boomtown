@@ -82,6 +82,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .cell.pop .bg { fill: url(#paper); }
 @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.09); } 100% { transform: scale(1); } }
 #board .float { font-size: 38px; paint-order: stroke; stroke: var(--paper); stroke-width: 7px; stroke-linejoin: round; }
+#board .float.small { font-size: 31px; }
 /* A forced sale's SOLD, stamped in red over the lot. */
 #board .stamp .ink { transform-box: fill-box; transform-origin: center; }
 #board .stamp rect { fill: #fffaf0d9; stroke: var(--brick-deep); stroke-width: 5; }
