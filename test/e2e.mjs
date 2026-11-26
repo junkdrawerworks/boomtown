@@ -1016,6 +1016,12 @@ for (const how of ['Escape', 'scrim', '✕']) {
 }
 await page.click('#sheet [data-a="board"]');
 assert.equal(await page.evaluate(() => document.activeElement?.id), 'againLink', 'Look at the town does not leave See the results');
+// Once the game is over, a player's sheet doesn't say a lot of theirs can be made to sell (Rusty's Summit Terrace is
+// empty here, and could be in play).
+await page.click('#players .chip >> nth=1');
+assert.ok((await page.$$('#sheet .pick')).length > 0, "Rusty's sheet lists no lots on Founders' Day");
+assert.equal(await page.$$eval('#sheet .warn', e => e.length), 0, "a player's sheet says a lot can be made to sell once the game is over");
+await page.click('#sheet [data-close]');
 
 // Your lots keeps its place after a build or a sale: scrolled to the foot of a long list on a small phone, it opens
 // again where it was, with the focus back on the lot's own button.

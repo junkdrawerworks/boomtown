@@ -1052,7 +1052,7 @@ function showPlayer(p) {
   if (mine.length) {
     h += '<div class="pick-list">';
     for (const i of mine) {
-      const sp = SPACES[i], price = G.buyoutPrice(v, i);
+      const sp = SPACES[i], price = v.phase === 'over' ? null : G.buyoutPrice(v, i); // no sales once the game is over
       const what = sp.type === 'depot' ? 'Depot' : G.LEVEL_NAMES[v.level[i]];
       h += `<div class="pick" style="cursor:default">${sp.district ? swatch(sp.district) : '<span class="swatch" style="background:#7d6b5a"></span>'}<span>${esc(sp.name)}<small>${what}, rent ${money(G.rentFor(v, i))}</small>${price != null ? `<small class="warn">Can be made to sell for ${money(price)}</small>` : ''}</span><span></span></div>`;
     }
