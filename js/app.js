@@ -33,6 +33,7 @@ let busy = false;              // something is animating; the buttons wait
 let note = '';                 // the line in the middle of the board
 let ringed = null;             // the space a sheet is about, ringed on the board while the sheet is open
 let unused = null;             // after a detour, which die (0 or 1) wasn't moved by: it's dimmed until the next roll
+let said = null;               // what the line in the middle last said (see setSay)
 let returnTo = null;           // where the focus was when a sheet opened, to go back to when it closes
 const view = createBoard($('board'), { onCell: i => showSpace(i) });
 
@@ -53,6 +54,16 @@ const humans = () => s.players.filter(p => p.kind === 'human').length;
 const isHumanTurn = () => s && s.phase !== 'over' && G.current(s).kind === 'human';
 const { swatch } = W;
 const ring = i => { ringed = i; if (s) view.focus(i); };
+// A space in a sentence: 'the Land Office', 'Ferry Landing'.
+const place = i => (['office', 'yard', 'tax'].includes(SPACES[i].type) ? 'the ' : '') + esc(SPACES[i].name);
+
+// The line in the middle of the board is read out as it changes (aria-live), so it's written only when it does: the
+// same words written again would be read again.
+function setSay(html) {
+  if (html === said) return;
+  said = html;
+  $('say').innerHTML = html;
+}
 
 // Keyboard and screen-reader players: the button the turn waits on (Roll the dice, the first move, End turn, Decide)
 // takes the focus when the buttons are redrawn, so the next press is always the next step.
@@ -210,7 +221,7 @@ function render() {
   drawPlayers();
   drawLogList();
   drawDice();
-  $('say').innerHTML = note;
+  setSay(note);
   // The buttons in the middle. Emptying them drops the focus if it was on one, so it's put back on the new main button,
   // unless the person is somewhere else (a space on the board, a sheet).
   const a = $('actions');
@@ -393,7 +404,7 @@ async function onMove(o) {
   note = '';
   await play(ev, my);
   if (my !== gen) return;
-  if (s.phase === 'decide') { render(); askDecision(); return; }
+  if (s.phase === 'decide') { if (!note) note = landedNote(true); render(); askDecision(); return; }
   // A line that says only how you moved (a detour, passing Payday) is followed by where you are.
   const told = ev.some(e => e.t === 'card' || e.t === 'kitty' || e.t === 'pay' || (e.t === 'collect' && e.why !== 'Payday'));
   note = !note ? landedNote() : told ? note : `${note} ${landedNote(true)}`;
@@ -405,7 +416,8 @@ function landedNote(short = false) {
   const p = s.turn, sp = SPACES[G.current(s).pos];
   if (sp.type === 'office' && !G.emptyLots(s).length) return 'On the Land Office: nothing left for sale.';
   if (sp.type === 'yard' && !OWNABLE.some(i => G.canBuild(s, p, i, 0.5).ok)) return 'On the Lumberyard: nothing of yours can go up at half price.';
-  return short ? `On ${esc(sp.name)}.` : `On ${esc(sp.name)}. Build if you like, then end your turn.`;
+  const on = place(G.current(s).pos);
+  return short ? `On ${on}.` : `On ${on}. Build if you like, then end your turn.`;
 }
 
 async function onEndTurn() {
@@ -462,11 +474,11 @@ async function play(events, my = gen) {
           const d = $('dice');
           d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
           note = line;
-          $('say').innerHTML = note;
+          setSay(note);
           await wait(500 * k);
           break;
         }
-        case 'detour': note = line; $('say').innerHTML = note; detour = true; break;
+        case 'detour': note = line; setSay(note); detour = true; break;
         case 'move': {
           const ms = calm() ? 0 : (bot ? 120 : 140) * k;
           const steps = e.path.length;
@@ -474,6 +486,8 @@ async function play(events, my = gen) {
           if (ms) for (let j = 0; j < steps; j++) setTimeout(() => sfx.hop(), j * ms);
           else sfx.hop();
           await view.animateMove(s, e.p, e.path, ms);
+          // Where the townsfolk went, for anyone listening rather than watching.
+          if (bot) { note = `${nm(e.p)} to ${place(e.path[steps - 1])}.`; setSay(note); }
           break;
         }
         case 'collect':
@@ -498,22 +512,22 @@ async function play(events, my = gen) {
           break;
         case 'loan': note += ` ${line}`; render(); await wait(400 * k); break;
         case 'buy': case 'buyout':
-          sfx.stamp(); render(); view.pop(e.at); note = line; $('say').innerHTML = note;
+          sfx.stamp(); render(); view.pop(e.at); note = line; setSay(note);
           // A person made to sell gets long enough to read it.
           await wait((e.t === 'buyout' && s.players[e.from].kind === 'human' ? 1200 : 550) * k);
           break;
         case 'build': case 'sell':
           if (e.t === 'build') sfx.build(); else sfx.pay();
-          render(); view.pop(e.at); note = line; $('say').innerHTML = note;
+          render(); view.pop(e.at); note = line; setSay(note);
           await wait(500 * k);
           break;
         case 'land': render(); break;
         case 'card': {
           sfx.paper();
           render();
+          // The townsfolk's news shows as a toast, which is read out itself: the line in the middle doesn't say it again.
           if (bot || !isHumanTurn()) await toastCard(e.card, 2400 * k);
-          else await showCard(e.card);
-          note = `<b>${esc(CARD[e.card].head)}.</b>`;
+          else { await showCard(e.card); note = `<b>${esc(CARD[e.card].head)}.</b>`; }
           break;
         }
         case 'kitty': note = line; render(); break;

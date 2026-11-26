@@ -502,6 +502,22 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
   await kc.close();
 }
 
+// The line in the middle of the board is read out as it changes, so each line is written once, not again and again as
+// the screen redraws: over a round of the townsfolk's turns, no line is written twice in a row.
+await scene("s.phase = 'manage'; s.dice = [1, 2];");
+{
+  await page.evaluate(() => {
+    window.said = [];
+    new MutationObserver(ms => ms.forEach(m => window.said.push([...m.addedNodes].map(n => n.textContent).join(''))))
+      .observe(document.getElementById('say'), { childList: true, subtree: true, characterData: true });
+  });
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  const said = await page.evaluate(() => window.said);
+  assert.deepEqual(said.filter((t, k) => k && t === said[k - 1]), [], `a line in the middle is written again: ${JSON.stringify(said)}`);
+  assert.ok(said.some(t => /^(Rusty|Mabel|Dot) to [A-Z]/.test(t) || /^(Rusty|Mabel|Dot) to the /.test(t)), `where the townsfolk moved is not said: ${JSON.stringify(said)}`);
+}
+
 // Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
 await scene('', { round: 4 });
 await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));
