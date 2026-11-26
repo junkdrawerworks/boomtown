@@ -238,6 +238,16 @@ function btn(text, cls, fn) {
   return b;
 }
 
+// Would this move get the Lumberyard's question? Only with something of yours that can go up at half price, with the
+// cash you'll have there (Payday on the way counts): so make the move on a copy of the game and see.
+function yardAsks(o) {
+  try {
+    const t = JSON.parse(JSON.stringify({ ...s, log: [], since: null }));
+    G.move(t, o.steps, o.detour);
+    return t.pending?.kind === 'yard';
+  } catch { return true; } // a detour with none left: it can't be taken anyway
+}
+
 // What a move would land on, in a few words.
 function preview(o) {
   const p = s.turn, sp = SPACES[o.to], pl = G.current(s);
@@ -253,8 +263,8 @@ function preview(o) {
     }
     case 'payday': parts.push(`Payday, ${money(G.RULES.salary + G.RULES.landBonus)}`); break;
     case 'gazette': parts.push('The Gazette'); break;
-    case 'office': parts.push('Land Office: buy any empty lot'); break;
-    case 'yard': parts.push('Lumberyard: build at half price'); break;
+    case 'office': parts.push(G.emptyLots(s).length ? 'Land Office: buy any empty lot' : 'Land Office: nothing left for sale'); break;
+    case 'yard': parts.push(yardAsks(o) ? 'Lumberyard: build at half price' : 'Lumberyard: nothing to build at half price'); break;
     case 'square': parts.push(`Town Square: kitty ${money(s.kitty)}`); break;
     case 'hall': parts.push('City Hall: rezone a district'); break;
     case 'tax': parts.push(`Assessor: pay ${money(Math.max(G.RULES.taxMin, G.holdings(s, p).levels * G.RULES.taxPerLevel))}`); break;
@@ -366,12 +376,19 @@ async function onMove(o) {
   note = '';
   await play(ev, my);
   if (my !== gen) return;
-  if (s.phase === 'decide') { render(); askDecision(); } else { if (!note) note = landedNote(); render(); }
+  if (s.phase === 'decide') { render(); askDecision(); return; }
+  // A line that says only how you moved (a detour, passing Payday) is followed by where you are.
+  const told = ev.some(e => e.t === 'card' || e.t === 'kitty' || e.t === 'pay' || (e.t === 'collect' && e.why !== 'Payday'));
+  note = !note ? landedNote() : told ? note : `${note} ${landedNote(true)}`;
+  render();
 }
 
-function landedNote() {
-  const sp = SPACES[G.current(s).pos];
-  return `On ${esc(sp.name)}. Build if you like, then end your turn.`;
+// Where you landed, when it asked nothing: and why not, where a space might have.
+function landedNote(short = false) {
+  const p = s.turn, sp = SPACES[G.current(s).pos];
+  if (sp.type === 'office' && !G.emptyLots(s).length) return 'On the Land Office: nothing left for sale.';
+  if (sp.type === 'yard' && !OWNABLE.some(i => G.canBuild(s, p, i, 0.5).ok)) return 'On the Lumberyard: nothing of yours can go up at half price.';
+  return short ? `On ${esc(sp.name)}.` : `On ${esc(sp.name)}. Build if you like, then end your turn.`;
 }
 
 async function onEndTurn() {

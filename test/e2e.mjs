@@ -359,6 +359,25 @@ await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[
   await page.click('#sheet [data-close]');
 }
 
+// A move's preview says what will really happen there, and after a detour the line says where you landed: here every
+// lot is sold, so the Land Office has nothing to offer, and nothing of yours can go up at the Lumberyard.
+await scene("B.OWNABLE.forEach(i => { if (s.owner[i] < 0) s.owner[i] = 1; }); s.players[0].pos = 4; s.players[0].detours = 2; s.dice = [3, 5]; s.phase = 'move';");
+{
+  await page.evaluate(() => window.boomtown.render());
+  const moves = await page.$$eval('.move-btn', bs => bs.map(b => b.textContent));
+  assert.ok(moves.some(m => /Land Office: nothing left for sale/.test(m)), `the move to the Land Office promises a buy: ${moves}`);
+  await page.click('.move-btn:has-text("Land Office")');
+  await page.waitForFunction(() => window.boomtown.state.phase === 'manage');
+  await page.waitForTimeout(600);
+  assert.match(await page.textContent('#say'), /^You took a detour \(1 left\)\. On the Land Office: nothing left for sale\.$/, 'after a detour the line does not say where you are');
+}
+await scene("B.OWNABLE.forEach(i => { if (s.owner[i] === 0) s.owner[i] = 1; }); s.players[0].pos = 7; s.dice = [1, 2]; s.phase = 'move';");
+{
+  await page.evaluate(() => window.boomtown.render());
+  const moves = await page.$$eval('.move-btn', bs => bs.map(b => b.textContent));
+  assert.ok(moves.some(m => /Lumberyard: nothing to build at half price/.test(m)), `the move to the Lumberyard promises a build: ${moves}`);
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);
