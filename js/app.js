@@ -445,6 +445,17 @@ function drawPlayers(s) {
   });
 }
 
+// A huge rent: $250 or more, and a quarter or more of what the payer was worth before paying it. About three in a
+// four-player game of 20 rounds, under one in a two-player game.
+const hugeRent = e => typeof e.to === 'number' && e.why.startsWith('rent') && e.amount >= 250 && e.amount * 4 >= G.netWorth(shown || s, e.from) + e.amount;
+// A player's card shakes: a huge rent went out of it.
+function shakeCard(p) {
+  const c = $('players').children[p];
+  if (!c) return;
+  c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+  setTimeout(() => c.classList.remove('shake'), 600);
+}
+
 // A player's card lights up gold for a moment: money came in.
 function flashCard(p) {
   const c = $('players').children[p];
@@ -634,19 +645,22 @@ async function play(events, my = gen, before = null) {
           note = line || note; render();
           await nap(450 * k);
           break;
-        case 'pay':
+        case 'pay': {
           if (e.to === 'bank') break; // a purchase: the buy or build event shows it
-          view.float(s.players[e.from].pos, `−${money(e.amount)}`, '#b23a2a');
+          const huge = hugeRent(e);
+          view.float(s.players[e.from].pos, `−${money(e.amount)}`, '#b23a2a', huge ? 1900 : 1300, huge ? 'big' : '');
           note = line || note; render();
           if (typeof e.to === 'number') {
             // Rent and forced sales: out of one piece and, a beat later, into the other. A person hears the coin when
-            // the money comes to them from one of the townsfolk.
+            // the money comes to them from one of the townsfolk. A huge rent lands harder: a bigger float, the payer's
+            // card shakes, and a low thud.
             const to = e.to, kind = p => s.players[p].kind;
-            if (kind(to) === 'human' && kind(e.from) !== 'human') sf.coin(); else sf.pay();
+            if (huge) { sf.thud(); shakeCard(e.from); } else if (kind(to) === 'human' && kind(e.from) !== 'human') sf.coin(); else sf.pay();
             setTimeout(() => { if (my !== gen) return; view.float(s.players[to].pos, `+${money(e.amount)}`, '#1f7a46'); flashCard(to); }, 250 * k);
           } else sf.pay();
-          await nap(600 * k);
+          await nap((huge ? 1000 : 600) * k);
           break;
+        }
         case 'loan': note += ` ${line}`; render(); await nap(400 * k); break;
         case 'buy': case 'buyout': {
           // A forced sale stamps SOLD across the lot. A person made to sell gets a headline, and long enough to read it.

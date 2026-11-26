@@ -436,6 +436,24 @@ await page.evaluate(() => {
   assert.ok(seen.floats.every(f => f.inside !== false), `money floating off the top row leaves the board: ${JSON.stringify(seen)}`);
 }
 
+// A huge rent, here $900 when the payer is worth not much more than twice that, floats bigger and shakes the payer's card.
+await scene(RENT + ' s.pending.rent = 900; s.players[0].cash = 1000; s.players[0].debt = 0;');
+await page.waitForSelector('#sheet [data-c="pay"]');
+{
+  await page.evaluate(() => {
+    window.huge = { floats: [], shook: [] };
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.classList?.contains('float')) window.huge.floats.push([n.textContent, n.getAttribute('class')]); })))
+      .observe(document.querySelector('#board .fx'), { childList: true });
+    new MutationObserver(() => document.querySelectorAll('.chip.shake').forEach(c => window.huge.shook.push([...c.parentNode.children].indexOf(c))))
+      .observe(document.getElementById('players'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+  await page.click('#sheet [data-c="pay"]');
+  await page.waitForFunction(() => !window.boomtown.busy);
+  const huge = await page.evaluate(() => window.huge);
+  assert.ok(huge.floats.some(([text, cls]) => text === '−$900' && cls === 'float big'), `a huge rent doesn't float bigger: ${JSON.stringify(huge)}`);
+  assert.deepEqual([...new Set(huge.shook)], [0], `a huge rent doesn't shake the payer's card, and only theirs: ${JSON.stringify(huge)}`);
+}
+
 // The cards change as the story plays out, not the moment a move is made: on a move past Payday the card keeps its
 // cash while the piece is on its way, and shows the pay once it's there.
 await scene("s.players[0].pos = 26; s.players[0].debt = 0; s.dice = [3, 4]; s.phase = 'move';");
