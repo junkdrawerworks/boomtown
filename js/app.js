@@ -215,9 +215,19 @@ function render() {
   $('round').classList.toggle('last', last);
   // Board marks: where the dice can take you, what you can build on.
   let dests = [], buildable = [];
-  if (human && s.phase === 'move') dests = G.moveOptions(s).map(o => ({ to: o.to, label: o.steps, usable: o.usable }));
-  if (human && s.phase === 'manage') buildable = OWNABLE.filter(i => G.canBuild(s, p, i).ok);
-  view.render(s, { dests, buildable, focus: ringed });
+  // A screen reader hears the same on each space: where a move lands, and what can be built on.
+  const labels = {};
+  if (human && s.phase === 'move') {
+    dests = G.moveOptions(s).map(o => {
+      labels[o.to] = `${o.detour ? 'Detour' : 'Both dice'}, ${o.steps}: ${o.usable ? 'lands here' : 'no detours left'}.`;
+      return { to: o.to, label: o.steps, usable: o.usable };
+    });
+  }
+  if (human && s.phase === 'manage') {
+    buildable = OWNABLE.filter(i => G.canBuild(s, p, i).ok);
+    for (const i of buildable) labels[i] = 'You can build here.';
+  }
+  view.render(s, { dests, buildable, focus: ringed, labels });
   drawPlayers();
   drawLogList();
   drawDice();
@@ -316,11 +326,14 @@ function drawPlayers() {
   const html = s.players.map((pl, p) => {
     const worth = G.netWorth(s, p);
     const detours = `${pl.detours} detour${pl.detours === 1 ? '' : 's'}`;
+    const now = p === s.turn && s.phase !== 'over';
     // Two rows that never change shape: name and cash, then what they're worth, or what they owe while they owe it.
-    return `<div class="chip${p === s.turn && s.phase !== 'over' ? ' now' : ''}" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
+    // Whose turn it is (the gold outline) and where each piece stands are written out for a screen reader.
+    return `<div class="chip${now ? ' now' : ''}" role="group" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
       <span class="tk">${art.tokenSvg(pl.token, 30)}</span>
       <span class="r"><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span></span>
       <span class="r">${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth">worth ${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span></span>
+      <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>
     </div>`;
   });
   // Redraw only the cards that changed, so a card lighting up (see flashCard) isn't cut short by the next render.

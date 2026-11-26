@@ -523,6 +523,33 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.ok(said.some(t => /^(Rusty|Mabel|Dot) to [A-Z]/.test(t) || /^(Rusty|Mabel|Dot) to the /.test(t)), `where the townsfolk moved is not said: ${JSON.stringify(said)}`);
 }
 
+// Read by a screen reader in the move phase: each space says who stands on it and where a move lands, the badges and
+// pieces add no stray numbers, and each player's card says where its player is and whose turn it is.
+await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
+{
+  const s = await page.evaluate(() => { const st = window.boomtown.state; return { pos: st.players.map(p => p.pos), names: st.players.map(p => p.name), moves: window.boomtown.G.moveOptions(st) }; });
+  const nodes = await axTree(page);
+  const name = n => n.name?.value || '';
+  const spaces = nodes.filter(n => n.role?.value === 'button' && /^(.*?)[,.:]/.test(name(n)) && !n.ignored);
+  for (const [q, at] of s.pos.entries()) {
+    const label = await page.getAttribute(`#board .cell[data-i="${at}"]`, 'aria-label');
+    assert.match(label, new RegExp(`Here: .*${s.names[q]}`), `the space ${s.names[q]} is on does not say so: ${label}`);
+    assert.ok(spaces.some(n => name(n) === label), `the space ${s.names[q]} is on is not in the accessibility tree as labelled`);
+  }
+  for (const o of s.moves) {
+    const label = await page.getAttribute(`#board .cell[data-i="${o.to}"]`, 'aria-label');
+    assert.match(label, new RegExp(`${o.detour ? 'Detour' : 'Both dice'}, ${o.steps}: ${o.usable ? 'lands here' : 'no detours left'}\\.$`), `a move's space does not say where it lands: ${label}`);
+  }
+  const byId = new Map(nodes.map(n => [n.nodeId, n]));
+  const onBoard = n => { for (let x = n; x; x = byId.get(x.parentId)) if (name(x) === 'The board') return true; return false; };
+  const stray = nodes.filter(n => !n.ignored && n.role?.value === 'StaticText' && /^\d+$/.test(name(n)) && onBoard(n));
+  assert.deepEqual(stray.map(name), [], 'numbers with no words are read out on the board');
+  const chips = nodes.filter(n => !n.ignored && n.role?.value === 'group' && /cash/.test(name(n)));
+  assert.equal(chips.length, s.names.length, "the players' cards are not named groups");
+  assert.match(await page.textContent('.chip.now .vh'), /^Playing now\. On /, 'the card whose turn it is does not say so');
+  assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
+}
+
 // Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
 await scene('', { round: 4 });
 await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));

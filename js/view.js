@@ -47,10 +47,12 @@ export function createBoard(svg, { onCell } = {}) {
     <rect class="paper" x="0" y="0" width="${SIZE}" height="${H}" fill="url(#paper)"/>
     <g class="cells"></g>
     <g class="frame"></g>
-    <g class="marks"></g>
-    <g class="tokens"></g>
+    <g class="marks" aria-hidden="true"></g>
+    <g class="tokens" aria-hidden="true"></g>
     <g class="kbd" aria-hidden="true"></g>
-    <g class="fx"></g>`;
+    <g class="fx" aria-hidden="true"></g>`;
+  // The spaces' own labels say who's on them and where a move lands (see drawCell), so the layers over them are hidden
+  // from screen readers: they'd only add stray numbers.
   const cellsG = svg.querySelector('.cells'), marksG = svg.querySelector('.marks');
   const tokensG = svg.querySelector('.tokens'), kbdG = svg.querySelector('.kbd'), fxG = svg.querySelector('.fx');
   const cells = [];
@@ -187,7 +189,7 @@ export function createBoard(svg, { onCell } = {}) {
       case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
       case 'yard': drawing = art.lumber; tag = `<text class="tiny">BUILD ½</text>`; label = 'Lumberyard: build one level at half price.'; break;
       case 'tax': drawing = art.assessor; label = 'Assessor: pay for every building level you own.'; break;
-      case 'payday': drawing = art.payday; label = 'Payday.'; break;
+      case 'payday': drawing = art.payday; label = `Payday: collect ${usd(RULES.salary)} passing, ${usd(RULES.salary + RULES.landBonus)} landing.`; break;
       case 'office': drawing = art.office; label = 'Land Office: buy any empty lot.'; break;
       case 'square': drawing = art.square; label = `Town Square: take the kitty, ${usd(s.kitty)}.`; break;
       case 'hall': drawing = art.hall; label = 'City Hall: rezone a district.'; break;
@@ -199,6 +201,8 @@ export function createBoard(svg, { onCell } = {}) {
       if (sub) h += `<text class="corner-sub" x="${r.x + r.w / 2}" y="${r.y + (H > SIZE ? 142 : 140)}">${sub}</text>`;
       if (sp.type === 'payday') h += `<path class="arrow" d="M${r.x + 36} ${r.y + 56} h-24 m8 -7 l-8 7 l8 7"/>`;
     } else if (tag) h += `<g transform="translate(${L.tag[0]} ${L.tag[1]})">${tag}</g>`;
+    const here = s.players.filter(pl => pl.pos === i).map(pl => pl.name);
+    if (here.length) label += ` Here: ${here.join(', ')}.`;
     if (labels[i]) label += ' ' + labels[i];
     if (g._h !== h) { g.innerHTML = h; g._h = h; }
     g.setAttribute('aria-label', label);
