@@ -159,6 +159,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .log li { opacity: .7; }
 .log li:first-child { opacity: 1; }
+.log li.round { opacity: .9; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; padding-top: 4px; }
+/* In the What happened sheet the list reads top down, newest first. */
+.log.in-sheet { flex-direction: column; max-height: none; background: transparent; color: var(--ink); padding: 0; }
+.log.in-sheet li { opacity: 1; }
+.log.in-sheet li.round { color: var(--muted); border-bottom: 1px solid var(--line); padding: 10px 0 2px; margin-bottom: 2px; }
+.log.in-sheet li.round:first-child { padding-top: 4px; }
 
 @media (min-width: 900px) {
   .play { flex-direction: row; align-items: flex-start; justify-content: center; gap: 18px; }

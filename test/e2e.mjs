@@ -292,6 +292,27 @@ await scene("const i = B.LOTS_IN.mill[0]; s.owner[i] = 0; s.level[i] = 2; s.land
   await page.click('#sheet [data-close]');
 }
 
+// What happened opens on the newest line, at the top, with each round under its own heading, and keeps more than the
+// last few rounds.
+await scene("s.phase = 'manage'; s.dice = [1, 2]; for (let k = 0; k < 150; k++) s.log.push('Line ' + k);");
+{
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  await page.click('#logBtn');
+  const { first, header, newest, top, n } = await page.evaluate(() => {
+    const s = window.boomtown.state, lis = [...document.querySelectorAll('#sheet ol li')];
+    const line = lis.find(l => !l.classList.contains('round'));
+    return { first: lis[0].textContent, header: lis[0].classList.contains('round'), newest: line.textContent === s.log.filter(t => !/^Round \d+$/.test(t)).pop(),
+      top: line.getBoundingClientRect().top < document.getElementById('sheet').getBoundingClientRect().top + 160, n: lis.length };
+  });
+  assert.equal(first, 'Round 15', 'What happened does not start with the round now being played');
+  assert.equal(header, true, 'the round line is not drawn as a heading');
+  assert.equal(newest, true, 'What happened does not list the newest line first');
+  assert.equal(top, true, 'the newest line is not at the top of What happened as it opens');
+  assert.ok(n > 150, `What happened keeps only ${n} lines`);
+  await page.click('#sheet [data-close]');
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);

@@ -168,7 +168,7 @@ function startGame(game, resumed = false) {
   $('app').hidden = false;
   view.reset();
   note = resumed ? `Back in Boomtown. ${whoseTurn()}` : 'Ground broken. Every lot is for sale.';
-  if (!resumed) { addLog(`A new game: ${s.rounds} rounds, ${s.players.length} players.`); save(); }
+  if (!resumed) { addLog(`A new game: ${s.rounds} rounds, ${s.players.length} players.`); addLog(`Round ${s.round}`); save(); }
   render();
   run();
 }
@@ -299,13 +299,28 @@ function flashCard(p) {
   setTimeout(() => c.classList.remove('flash'), 700);
 }
 
+// The log keeps a whole long game (a few hundred lines), with a 'Round 5' line where each round starts.
+const LOG_MAX = 1000;
+const isRoundLine = t => /^Round \d+$/.test(t);
+const logItem = t => (isRoundLine(t) ? `<li class="round">${esc(t)}</li>` : `<li>${esc(t)}</li>`);
 function addLog(text) {
   if (!text) return;
   s.log.push(text.replace(/<[^>]+>/g, ''));
-  if (s.log.length > 120) s.log.splice(0, s.log.length - 120);
+  if (s.log.length > LOG_MAX) s.log.splice(0, s.log.length - LOG_MAX);
 }
+// Beside the board on a wide screen: the latest lines, oldest at the top, the newest at the foot (the list runs
+// bottom up, so it opens on the newest).
 function drawLogList() {
-  $('log').innerHTML = s.log.slice(-30).reverse().map(t => `<li>${esc(t)}</li>`).join('');
+  $('log').innerHTML = s.log.slice(-30).reverse().map(logItem).join('');
+}
+// The What happened sheet: newest first, from the top, each round's lines under its own heading.
+function logSheetHtml() {
+  const rounds = [[]];
+  for (const t of s.log) { if (isRoundLine(t)) rounds.push([]); rounds[rounds.length - 1].push(t); }
+  return rounds.reverse().map(r => {
+    const head = isRoundLine(r[0]) ? r.shift() : null;
+    return (head ? logItem(head) : '') + r.reverse().map(logItem).join('');
+  }).join('');
 }
 
 // ---------- the flow of turns ----------
@@ -464,7 +479,7 @@ async function play(events, my = gen) {
         case 'kitty': note = line; render(); break;
         case 'rezone': sfx.stamp(); note = line; render(); await wait(500 * k); break;
         case 'interest': case 'repaid': render(); break;
-        case 'turn': note = whoseTurn(); break;
+        case 'turn': if (e.p === 0) addLog(`Round ${e.round}`); note = whoseTurn(); break;
         case 'over': sfx.end(); break;
       }
     }
@@ -784,7 +799,7 @@ $('menuBtn').addEventListener('click', () => {
 
 $('logBtn').addEventListener('click', () => {
   if (!s) return;
-  openSheet(`<h2 id="sheetTitle">What happened</h2><ol class="log" style="max-height:none;background:transparent;color:var(--ink);padding:0">${s.log.slice(-80).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ol>`);
+  openSheet(`<h2 id="sheetTitle">What happened</h2><ol class="log in-sheet">${logSheetHtml()}</ol>`);
 });
 
 function showRules() {
