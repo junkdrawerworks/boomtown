@@ -15,6 +15,12 @@ export const inkOn = hex => (contrast(hex, '#ffffff') >= contrast(hex, INK) ? '#
 // A colour and the words to go on it, with the colour taken a little lighter (under ink) or darker (under white) until
 // the two read at 4.5:1 or better.
 const mix = (a, b, w) => '#' + [1, 3, 5].map(k => Math.round(parseInt(a.slice(k, k + 2), 16) * (1 - w) + parseInt(b.slice(k, k + 2), 16) * w).toString(16).padStart(2, '0')).join('');
+// A colour for words on the cream paper: taken toward ink until it reads at 4.5:1 or better.
+export function onPaper(hex, paper = '#fbf5e6') {
+  let c = hex;
+  for (let w = 0.05; contrast(c, paper) < 4.5 && w <= 1; w += 0.05) c = mix(hex, INK, w);
+  return c;
+}
 export function readable(hex) {
   const fg = inkOn(hex), toward = fg === INK ? '#ffffff' : INK;
   let bg = hex;

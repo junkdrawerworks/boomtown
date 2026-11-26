@@ -185,6 +185,13 @@ assert.match(await page.textContent('#sheet .gazette .body'), /^(Worth \$[\d,]+,
   }
 }
 assert.equal(await page.isVisible('#sheet .chart'), true);
+// Each line in the chart ends in its player's name, in their colour, clear of the other names.
+{
+  const who = await page.$$eval('#sheet .chart .who', ts => ts.map(t => ({ name: t.textContent, fill: getComputedStyle(t).fill, box: t.getBoundingClientRect().toJSON() })));
+  assert.deepEqual(who.map(w => w.name).sort(), ['Mabel', 'You'], `the chart's lines are not named: ${JSON.stringify(who)}`);
+  assert.ok(who[0].box.bottom <= who[1].box.top || who[1].box.bottom <= who[0].box.top, `the chart's names sit on each other: ${JSON.stringify(who)}`);
+  assert.notEqual(who[0].fill, who[1].fill, "the chart's names are not in their players' colours");
+}
 // Founders' Day is read out by its headline, its ✕ isn't covered by the Gazette, and the chart says where each player
 // ended.
 {

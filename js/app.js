@@ -1182,18 +1182,27 @@ function finish() {
 }
 
 function chart() {
-  const W = 400, H = 170, pad = 46;
+  const W = 440, H = 180, pad = 46;
   const all = s.players.flatMap(p => p.history);
   const max = Math.max(...all, 1), min = Math.min(0, ...all), n = Math.max(...s.players.map(p => p.history.length)) - 1 || 1;
-  const x = k => pad + (k / n) * (W - pad - 8), y = v => H - 18 - ((v - min) / (max - min)) * (H - 30);
-  let g = `<line x1="${pad}" y1="${y(0)}" x2="${W - 8}" y2="${y(0)}" stroke="#0003"/>`;
+  // Each line ends in its player's name, in their colour (a shade darker where it needs to be to read on the paper),
+  // so there's no key to look up. Names that would sit on top of each other are moved apart.
+  const names = s.players.map(p => (p.name.length > 10 ? `${p.name.slice(0, 9)}…` : p.name));
+  const right = W - 8 - Math.min(90, Math.max(...names.map(t => t.length)) * 7.4 + 8);
+  const x = k => pad + (k / n) * (right - pad), y = v => H - 18 - ((v - min) / (max - min)) * (H - 30);
+  let g = `<line x1="${pad}" y1="${y(0)}" x2="${right}" y2="${y(0)}" stroke="#0003"/>`;
   g += `<text x="${pad - 4}" y="${y(max) + 4}" text-anchor="end">${money(Math.round(max / 100) * 100)}</text><text x="${pad - 4}" y="${y(0) + 4}" text-anchor="end">$0</text>`;
-  g += `<text x="${pad}" y="${H - 2}">Start</text><text x="${W - 8}" y="${H - 2}" text-anchor="end">Round ${n}</text>`;
+  g += `<text x="${pad}" y="${H - 2}">Start</text><text x="${right}" y="${H - 2}" text-anchor="end">Round ${n}</text>`;
   // Read out, the lines come down to where each player ended, richest first.
   const ended = G.standings(s).map((x, k) => `${esc(s.players[x.p].name)}${k ? '' : ' ended'} on ${money(x.worth)}`).join(', ');
   s.players.forEach((p, q) => {
     g += `<polyline fill="none" stroke="${colorOf(q)}" stroke-width="3" stroke-linejoin="round" points="${p.history.map((v, k) => `${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}"/>`;
   });
+  const ends = s.players.map((p, q) => ({ q, y: y(p.history[p.history.length - 1]) })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < ends.length; k++) ends[k].y = Math.max(ends[k].y, ends[k - 1].y + 17);
+  const below = ends[ends.length - 1].y - (H - 22);
+  if (below > 0) ends.forEach(e => { e.y -= below; });
+  for (const e of ends) g += `<text class="who" x="${right + 6}" y="${(e.y + 4.5).toFixed(1)}" style="fill:${art.onPaper(colorOf(e.q))}">${esc(names[e.q])}</text>`;
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Each player's worth, round by round. ${ended}.">${g}</svg>`;
 }
 
