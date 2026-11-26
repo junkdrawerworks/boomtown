@@ -51,11 +51,14 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     <g class="frame"></g>
     <g class="marks" aria-hidden="true"></g>
     <g class="tokens" aria-hidden="true"></g>
+    <g class="marks-top" aria-hidden="true"></g>
     <g class="kbd" aria-hidden="true"></g>
     <g class="fx" aria-hidden="true"></g>`;
-  // The spaces' own labels say who's on them and where a move lands (see drawCell), so the layers over them are hidden
-  // from screen readers: they'd only add stray numbers.
-  const cellsG = svg.querySelector('.cells'), marksG = svg.querySelector('.marks');
+  // Layers, bottom up: the spaces, the frame, a move's outline and build badges, the pieces, a move's number badge (over
+  // the pieces, so it's never hidden under them), the keyboard's ring, and the flourishes. The spaces' own labels say
+  // who's on them and where a move lands (see drawCell), so the layers over them are hidden from screen readers: they'd
+  // only add stray numbers.
+  const cellsG = svg.querySelector('.cells'), marksG = svg.querySelector('.marks'), topG = svg.querySelector('.marks-top');
   const tokensG = svg.querySelector('.tokens'), kbdG = svg.querySelector('.kbd'), fxG = svg.querySelector('.fx');
   const cells = [];
   // The keyboard's ring on a space is drawn in its own layer over the frame and the pieces, which would cover most of
@@ -84,9 +87,9 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     cellsG.appendChild(g);
     cells.push(g);
   }
-  marksG.addEventListener('click', e => {
-    const d = e.target.closest('.dest');
-    if (d) onDest?.(+d.dataset.i);
+  topG.addEventListener('click', e => {
+    const b = e.target.closest('.badge');
+    if (b) onDest?.(+b.dataset.i);
   });
 
   const view = { svg, shown: [], tokenEls: [], last: null };
@@ -144,13 +147,13 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     // Destination badges and build badges.
     // The tall board is drawn smaller on a phone, so its badges are bigger, and sit a little further in.
     const big = H > SIZE, R = big ? 24 : 19, B = big ? 17 : 13, inset = big ? 5 : 0;
-    let m = '';
+    let m = '', top = '';
     for (const d of dests) {
       const L = layout(d.to), r = L.r;
       const bx = L.badge[0] + (L.badge[0] < r.x + r.w / 2 ? inset : -inset), by = L.badge[1] + inset;
-      m += `<g class="dest${d.usable === false ? ' off' : ''}" data-i="${d.to}">
-        <rect x="${r.x + 4}" y="${r.y + 4}" width="${r.w - 8}" height="${r.h - 8}" rx="8"/>
-        <g transform="translate(${bx} ${by})"><circle r="${R}"/><text y="${big ? 10 : 7}">${d.label}</text></g></g>`;
+      const cls = d.usable === false ? ' off' : '';
+      m += `<g class="dest${cls}" data-i="${d.to}"><rect x="${r.x + 4}" y="${r.y + 4}" width="${r.w - 8}" height="${r.h - 8}" rx="8"/></g>`;
+      top += `<g class="badge${cls}" data-i="${d.to}" transform="translate(${bx} ${by})"><circle r="${R}"/><text y="${big ? 10 : 7}">${d.label}</text></g>`;
     }
     for (const i of buildable) {
       const L = layout(i), r = L.r;
@@ -165,6 +168,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       m += `<rect class="focus-ring" x="${r.x + 3}" y="${r.y + 3}" width="${r.w - 6}" height="${r.h - 6}" rx="6"/>`;
     }
     marksG.innerHTML = m;
+    topG.innerHTML = top;
     drawKbd(); // the board may have changed shape
   };
 

@@ -72,7 +72,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .corner-label { font-size: 16.5px; fill: var(--ink); }
 #board .corner-sub { font: 800 15px var(--sans); fill: var(--muted); letter-spacing: .04em; }
 #board.tall .corner-sub { font-size: 19px; }
-#board.tall .dest text { font-size: 28px; }
+#board.tall .badge text { font-size: 28px; }
 #board .arrow { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 #board .cell { cursor: pointer; outline: none; transform-box: fill-box; transform-origin: center; }
 /* The keyboard's ring on a space (see view.js): gold edged in ink, like the focus everywhere else. */
@@ -86,10 +86,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .tok.now .lift { animation: bob 1.4s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-5px); } }
 #board .dest rect { fill: #e2b23c33; stroke: var(--gold); stroke-width: 6; stroke-dasharray: 14 8; animation: march 1s linear infinite; pointer-events: none; }
-#board .dest circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; cursor: pointer; }
-#board .dest text { font-size: 22px; fill: var(--ink); }
+#board .badge { cursor: pointer; }
+#board .badge circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; }
+#board .badge text { font-size: 22px; fill: var(--ink); }
 #board .dest.off rect { stroke: #9a8f7c; fill: transparent; animation: none; }
-#board .dest.off circle { fill: #d6ccb6; }
+#board .badge.off circle { fill: #d6ccb6; }
 @keyframes march { to { stroke-dashoffset: -44; } }
 #board .can-build circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; }
 #board .can-build path { stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; }

@@ -550,16 +550,18 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }
 
-// Tapping a space a move reaches makes that move, on its number badge or anywhere on the space; tapping the badge of a
-// greyed one (a detour with none left) says why not.
+// Tapping a space a move reaches makes that move, on its number badge (drawn over the pieces, so they never hide it) or
+// anywhere on the space; tapping the badge of a greyed one (a detour with none left) says why not.
 await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
 {
   const moves = await page.evaluate(() => window.boomtown.G.moveOptions(window.boomtown.state));
   const off = moves.find(o => !o.usable), both = moves.find(o => !o.detour);
-  await page.click(`#board .dest[data-i="${off.to}"] circle`);
+  assert.equal(await page.$$eval('#board .badge', bs => bs.filter(b => b.closest('svg').querySelector('.tokens').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).length), 3,
+    'the badges are not drawn over the pieces');
+  await page.click(`#board .badge[data-i="${off.to}"] circle`);
   assert.equal(await page.textContent('#say'), 'No detours left until Payday.', 'a greyed badge says nothing when tapped');
   assert.equal(await page.evaluate(() => window.boomtown.state.phase), 'move');
-  await page.click(`#board .dest[data-i="${both.to}"] circle`);
+  await page.click(`#board .badge[data-i="${both.to}"] circle`);
   await page.waitForFunction(() => window.boomtown.state.phase !== 'move', null, { timeout: 5000 }).catch(() => {});
   assert.notEqual(await page.evaluate(() => window.boomtown.state.phase), 'move', 'tapping the badge of a move does not make it');
   assert.equal(await page.evaluate(() => window.boomtown.state.players[0].pos), both.to, 'the badge tapped moved somewhere else');
