@@ -253,3 +253,24 @@ test("a person's empty lot warns that a rival landing there can force a sale, an
   s.owner[DEPOTS[0]] = 0;
   assert.match(W.lotFacts(s, DEPOTS[0], { warn: true }), /make you sell it for \$\d+\. Own both depots to keep it\./);
 });
+
+// A bot's game at a given round, with the bot to play in seat 0.
+function botGame(bot = 'rusty', { round = 10, rounds = 20, players = 4 } = {}) {
+  const names = [bot, ...Object.keys(BOTS).filter(b => b !== bot)].slice(0, players);
+  const s = G.newGame({ seats: names.map((b, k) => ({ name: BOTS[b].name, kind: 'bot', bot: b, token: k })), rounds, seed: 11 });
+  s.round = round;
+  return s;
+}
+
+test('a townsperson sells a building to clear only a big loan, and never in the last three rounds', () => {
+  const sells = (round, debt) => {
+    const s = botGame('rusty', { round });
+    const lot = at('Hilltop');
+    s.owner[lot] = 0; s.level[lot] = 2;
+    s.players[0].cash = 0; s.players[0].debt = debt; s.phase = 'manage';
+    return botStep(s).some(e => e.t === 'sell');
+  };
+  assert.equal(sells(10, 500), true, 'a big loan mid-game still sells');
+  assert.equal(sells(10, 200), false, 'a small loan rides');
+  for (const round of [18, 19, 20]) assert.equal(sells(round, 900), false, `round ${round} of 20`);
+});

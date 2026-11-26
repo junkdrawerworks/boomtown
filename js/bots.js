@@ -158,15 +158,17 @@ function bestBuild(s, discount = 1, cheap = false) {
   return best;
 }
 
-// Sell buildings back to clear a loan, cheapest first, keeping blocks to last.
+// Sell buildings back to clear a big loan, cheapest first, keeping blocks to last. A sale returns half what the
+// building cost and takes the street's land down with it, so smaller loans ride, and in the last three rounds
+// nothing is sold: the interest left to come is less than the sale throws away.
+const SELL_AT = 400, KEEP_ROUNDS = 3;
 function raiseCash(s) {
   const p = s.turn, ev = [];
-  while (current(s).debt > 0) {
+  if (s.round > s.rounds - KEEP_ROUNDS) return ev;
+  while (current(s).debt >= SELL_AT) {
     const mine = OWNABLE.filter(i => s.owner[i] === p && s.level[i] > 0)
       .sort((a, b) => s.level[a] - s.level[b] || sellValue(a) - sellValue(b));
     if (!mine.length) break;
-    // Only sell if the loan would grow badly: small loans ride.
-    if (current(s).debt < 150) break;
     ev.push(...sell(s, mine[0]));
   }
   return ev;
