@@ -550,6 +550,20 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }
 
+// White on the brick buttons, and the small BOTH DICE over a move, read at 4.5:1 or better, as small text needs.
+await scene("s.dice = [2, 5]; s.phase = 'move';");
+{
+  const ratios = await page.$$eval('.move-btn.primary, .move-btn.primary .what b', els => els.map(el => {
+    const rgb = v => v.match(/[\d.]+/g).map(Number);
+    const lum = ([r, g, b]) => [r, g, b].map(x => x / 255).map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)).reduce((n, x, k) => n + x * [0.2126, 0.7152, 0.0722][k], 0);
+    const bg = rgb(getComputedStyle(el.closest('.move-btn')).backgroundColor), fg = rgb(getComputedStyle(el).color), a = +getComputedStyle(el).opacity;
+    const seen = fg.slice(0, 3).map((x, k) => x * a + bg[k] * (1 - a)); // a faded label is seen mixed with what's behind it
+    const [hi, lo] = [lum(seen), lum(bg)].sort((x, y) => y - x);
+    return Math.round((hi + 0.05) / (lo + 0.05) * 100) / 100;
+  }));
+  assert.ok(ratios.length === 2 && ratios.every(r => r >= 4.5), `white on brick reads at ${ratios.join(' and ')} to 1, under 4.5`);
+}
+
 // In a stack of pieces, the piece whose turn it is is drawn on top, whatever its seat.
 await scene("s.players.forEach(p => { p.pos = 17; });");
 assert.equal(await page.$eval('#board .tokens > .tok:last-child', t => t.classList.contains('now')), true, 'the piece whose turn it is is under the others');
