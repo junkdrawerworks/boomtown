@@ -67,12 +67,13 @@ export function rentTable(s, i) {
 }
 
 // The top of a lot's or a depot's sheet: whose it is, its rent, and how its district stands. With `warn`, a person's
-// lot that a rival could force them to sell says so, from the owner's side.
-export function lotFacts(s, i, { warn = false } = {}) {
+// lot that a rival could force them to sell says so, from the owner's side. `under` is HTML to put under the opening
+// line (the rent sheet's cash), above the rents.
+export function lotFacts(s, i, { warn = false, under = '' } = {}) {
   const sp = SPACES[i], d = sp.district;
   let h = `<div class="kicker">${d ? `${swatch(d)} ${DISTRICT[d].name}` : 'Railway'}</div><h2 id="sheetTitle">${esc(sp.name)}</h2>`;
   const o = s.owner[i], pl = s.players[o];
-  h += `<p>${o < 0 ? `For sale at ${money(G.landValue(s, i))}.` : `${esc(Whose(pl))} ${sp.type === 'lot' ? G.LEVEL_NAMES[s.level[i]].toLowerCase() : 'depot'}. Rent is <b>${money(G.rentFor(s, i))}</b>.`}</p>`;
+  h += `<p>${o < 0 ? `For sale at ${money(G.landValue(s, i))}.` : `${esc(Whose(pl))} ${sp.type === 'lot' ? G.LEVEL_NAMES[s.level[i]].toLowerCase() : 'depot'}. Rent is <b>${money(G.rentFor(s, i))}</b>.`}</p>${under}`;
   const price = warn && o >= 0 && pl.kind === 'human' ? G.buyoutPrice(s, i) : null;
   if (price != null) {
     h += `<p class="note warn">A rival who lands here can make ${o === s.turn ? 'you' : esc(who(pl))} sell it for ${money(price)}. ${sp.type === 'depot' ? 'Own both depots to keep it.' : 'Build on it, or own the whole district, to keep it.'}</p>`;

@@ -320,6 +320,89 @@ for (const [d, line] of [['mill', 'You rezoned Mill Row: land up from 122% to 14
   assert.ok(log.includes(line), `no "${line}" in the log: ${log.slice(-4)}`);
 }
 
+// Each question says what cash you have to answer it with, once (the sheet covers the player cards on a phone), and a
+// real choice on each does what it says.
+{
+  const usd = n => '$' + n.toLocaleString('en-US');
+  const state = () => page.evaluate(() => window.boomtown.state);
+  const ask = async sel => { if (!await sheetOpen()) await page.click('#actions button:has-text("Decide")'); await page.waitForSelector(sel); };
+  const settled = () => page.waitForFunction(() => window.boomtown.state.phase === 'manage' && !window.boomtown.busy && document.getElementById('sheetWrap').hidden);
+  const have = () => page.$$eval('#sheet .have', es => es.map(e => e.textContent));
+  const EMPTY = "B.LOTS_IN.mill.forEach(i => { s.owner[i] = -1; s.level[i] = 0; }); s.dice = [1, 2]; s.phase = 'decide';";
+
+  // Buy: "You have $400; $35 left after.", and the answers stay in view on a small phone. Short of the price, or with a
+  // loan, it says what you have and owe.
+  const BUY = cash => `${EMPTY} const i = B.LOTS_IN.mill[0]; s.players[0].pos = i; s.players[0].cash = ${cash}; s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };`;
+  await page.setViewportSize({ width: 375, height: 667 });
+  await scene(BUY(400));
+  await ask('#sheet [data-c="buy"]');
+  {
+    const { pending } = await state();
+    assert.deepEqual(await have(), [`You have $400; ${usd(400 - pending.price)} left after.`], "the buy sheet doesn't say what you have and what's left");
+    assert.deepEqual(await page.$$eval('#sheet [data-c]', bs => bs.filter(b => { const r = b.getBoundingClientRect(); return r.top < 0 || r.bottom > innerHeight; }).map(b => b.textContent)), [],
+      "the buy sheet's answers are out of view at 375x667");
+    await page.click('#sheet [data-c="buy"]');
+    await settled();
+    const t = await state();
+    assert.deepEqual([t.owner[pending.at], t.players[0].cash], [0, 400 - pending.price], 'buying a lot');
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await scene(BUY(20));
+  await ask('#sheet [data-c="buy"]');
+  assert.deepEqual(await have(), ['You have $20.'], 'the buy sheet short of the price');
+  await scene(BUY(0) + ' s.players[0].debt = 120;');
+  await ask('#sheet [data-c="buy"]');
+  assert.deepEqual(await have(), ['You have $0 and owe the bank $120.'], 'the buy sheet with a loan');
+  await page.click('#sheet [data-c="pass"]');
+  await settled();
+
+  // Rent: "You have $X." With a forced sale it won't stretch to, the cash starts that sale's note; short of the rent,
+  // it says how short. A forced sale moves the lot.
+  for (const [cash, says] of [['s.pending.buyout + 100', p => [`You have ${usd(p.buyout + 100)}.`]], ['s.pending.buyout - 5', p => [`You have ${usd(p.buyout - 5)}.`]], ['0', p => [`You have $0, so you're ${usd(p.rent)} short.`]]]) {
+    await scene(`${RENT} s.players[0].cash = ${cash};`);
+    await ask('#sheet [data-c="pay"]');
+    const { pending } = await state();
+    const shown = (await have()).map(t => t.replace(/ The bank lends.*/, ''));
+    assert.deepEqual(shown, says(pending), `the rent sheet with ${cash} doesn't say what you have, once`);
+    if (cash === 's.pending.buyout - 5') assert.match(await page.textContent('#sheet [data-c="buyout"] + .note'), /^You have \$[\d,]+\. Nothing is built here/, "a forced sale greyed out for want of cash doesn't say what you have");
+    if (cash === '0') assert.ok((await page.textContent('#sheet .have')).includes('adds a tenth, rounded up to the next $5 (at least $5), each time you pass Payday'), "the rent sheet doesn't say how a loan's interest is reckoned");
+    if (cash === 's.pending.buyout + 100') {
+      await page.click('#sheet [data-c="buyout"]');
+      await settled();
+      const t = await state();
+      assert.deepEqual([t.owner[pending.at], t.players[0].cash], [0, 100], 'a forced sale');
+    }
+  }
+
+  // The Land Office sells a named lot at its land value; the Estate sale at half that, to the $5.
+  for (const kind of ['office', 'estate']) {
+    await scene(`${EMPTY} s.players[0].pos = ${kind === 'office' ? 7 : 3}; s.players[0].cash = 1000; s.land.mill = 1.25; s.pending = { kind: '${kind}' };`);
+    const i = await page.evaluate(() => window.boomtown.state && (window.lot = [2, 1, 4].find(j => window.boomtown.state.owner[j] < 0)));
+    await ask(`#sheet [data-c="${i}"]`);
+    assert.deepEqual(await have(), ['You have $1,000.'], `the ${kind} sheet doesn't say what you have`);
+    const value = await page.evaluate(i => window.boomtown.G.landValue(window.boomtown.state, i), i);
+    const price = kind === 'office' ? value : Math.round(value / 2 / 5) * 5;
+    assert.equal(await page.textContent(`#sheet [data-c="${i}"] .cost`), usd(price), `the ${kind} sheet's price`);
+    await page.click(`#sheet [data-c="${i}"]`);
+    await settled();
+    const t = await state();
+    assert.deepEqual([t.owner[i], t.players[0].cash], [0, 1000 - price], `buying at the ${kind}`);
+  }
+
+  // The Lumberyard builds a level at half its cost.
+  await scene(`${EMPTY} const i = B.LOTS_IN.mill[1]; s.owner[i] = 0; s.players[0].pos = 10; s.players[0].cash = 300; s.pending = { kind: 'yard' }; window.lot = i;`);
+  {
+    const i = await page.evaluate(() => window.lot);
+    await ask(`#sheet [data-c="${i}"]`);
+    assert.deepEqual(await have(), ['You have $300.'], "the Lumberyard doesn't say what you have");
+    const cost = await page.evaluate(i => Math.round(window.boomtown.G.buildCost(i) / 2), i);
+    await page.click(`#sheet [data-c="${i}"]`);
+    await settled();
+    const t = await state();
+    assert.deepEqual([t.level[i], t.players[0].cash], [1, 300 - cost], 'building at the Lumberyard');
+  }
+}
+
 await scene();
 await page.click('#board .cell[data-i="17"]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');

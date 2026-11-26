@@ -819,31 +819,35 @@ function showLots(at = null) {
   });
 }
 
-// Ask the person whose turn it is to answer the game's question.
+// Ask the person whose turn it is to answer the game's question. On a phone the sheet covers the player cards, so each
+// question says once what cash they have to answer it with (class "have").
 function askDecision() {
   if (!isHumanTurn() || s.phase !== 'decide') return;
   const q = s.pending, p = s.turn, pl = G.current(s);
   const later = () => { note = 'Still to decide.'; render(); };
+  const have = `You have ${money(pl.cash)}${pl.debt ? ` and owe the bank ${money(pl.debt)}` : ''}`;
   let h = '';
   switch (q.kind) {
     case 'buy': {
       const can = pl.cash >= q.price;
       h = lotFacts(q.at) + `<div class="buttons stick">
         <button class="primary" data-c="buy" ${can ? '' : 'disabled'}>Buy it for ${money(q.price)}</button>
-        ${can ? '' : `<p class="note">You have ${money(pl.cash)}${pl.debt ? ' and a loan to clear' : ''}.</p>`}
+        <p class="note have">${can ? `${have}; ${money(pl.cash - q.price)} left after.` : `${have}.`}</p>
         <button class="secondary" data-c="pass">Leave it</button></div>`;
       break;
     }
     case 'rent': {
       const short = Math.max(0, q.rent - pl.cash);
       const sp = SPACES[q.at];
-      h = lotFacts(q.at) + '<div class="buttons stick">';
+      // The cash is said once: with how short you are, or first in the note on a forced sale it won't stretch to, or
+      // else under the sheet's opening line (not in the answers, which on a phone held sideways have no room to spare).
+      const grey = q.buyout != null && pl.cash < q.buyout;
+      h = lotFacts(q.at, { under: short || grey ? '' : `<p class="note have">${have}.</p>` }) + '<div class="buttons stick">';
       h += `<button class="primary" data-c="pay">Pay ${who(q.owner)} ${money(q.rent)}</button>`;
-      if (short) h += `<p class="note">You're ${money(short)} short. The bank lends the rest, and ${W.SAYS.interest}. Money coming in pays it off first.</p>`;
+      if (short) h += `<p class="note have">${have}, so you're ${money(short)} short. The bank lends the rest, and ${W.SAYS.interest}. Money coming in pays it off first.</p>`;
       if (q.buyout != null) {
-        const can = pl.cash >= q.buyout;
-        h += `<button class="secondary" data-c="buyout" ${can ? '' : 'disabled'}>Make ${who(q.owner)} sell it to you: ${money(q.buyout)}</button>
-          <p class="note">Nothing is built here and ${who(q.owner)} ${agree(q.owner, "don't", "doesn't")} own ${sp.type === 'depot' ? 'both depots' : `all of ${DISTRICT[sp.district].name}`}, so ${who(q.owner)} ${agree(q.owner, 'have', 'has')} to sell at ${G.RULES.buyout} times the land value. You pay no rent.</p>`;
+        h += `<button class="secondary" data-c="buyout" ${grey ? 'disabled' : ''}>Make ${who(q.owner)} sell it to you: ${money(q.buyout)}</button>
+          <p class="note">${grey && !short ? `<span class="have">${have}.</span> ` : ''}Nothing is built here and ${who(q.owner)} ${agree(q.owner, "don't", "doesn't")} own ${sp.type === 'depot' ? 'both depots' : `all of ${DISTRICT[sp.district].name}`}, so ${who(q.owner)} ${agree(q.owner, 'have', 'has')} to sell at ${G.RULES.buyout} times the land value. You pay no rent.</p>`;
       }
       h += '</div>';
       break;
@@ -851,7 +855,7 @@ function askDecision() {
     case 'office': case 'estate': {
       const half = q.kind === 'estate';
       const list = G.emptyLots(s).filter(i => !half || SPACES[i].type === 'lot');
-      h = `<h2 id="sheetTitle">${half ? 'Estate sale' : 'Land Office'}</h2><p>${half ? 'Buy any empty lot at half price.' : 'Buy any empty lot or depot in town at its price.'}</p><div class="pick-list">`;
+      h = `<h2 id="sheetTitle">${half ? 'Estate sale' : 'Land Office'}</h2><p>${half ? 'Buy any empty lot at half price.' : 'Buy any empty lot or depot in town at its price.'}</p><p class="note have">${have}.</p><div class="pick-list">`;
       for (const i of list) {
         const price = half ? Math.round(G.landValue(s, i) / 2 / 5) * 5 : G.landValue(s, i);
         const d = SPACES[i].district;
@@ -861,7 +865,7 @@ function askDecision() {
       break;
     }
     case 'yard': {
-      h = `<h2 id="sheetTitle">Lumberyard</h2><p>Build one level on one of your lots at half price.</p><div class="pick-list">`;
+      h = `<h2 id="sheetTitle">Lumberyard</h2><p>Build one level on one of your lots at half price.</p><p class="note have">${have}.</p><div class="pick-list">`;
       for (const i of OWNABLE.filter(j => s.owner[j] === p && SPACES[j].type === 'lot')) {
         const c = G.canBuild(s, p, i, 0.5);
         h += `<button class="pick" data-c="${i}" ${c.ok ? '' : 'disabled'}>${swatch(SPACES[i].district)}<span>${esc(SPACES[i].name)}<small>${s.level[i] < G.RULES.maxLevel ? `${G.LEVEL_NAMES[s.level[i] + 1]}: rent ${money(G.rentFor(s, i))} → ${money(W.rentAfterBuild(s, i))}` : 'Built as tall as it goes'}${!c.ok && c.reason && s.level[i] < G.RULES.maxLevel ? ' · ' + esc(c.reason) : ''}</small></span><span class="cost">${c.cost != null ? money(c.cost) : ''}</span></button>`;
