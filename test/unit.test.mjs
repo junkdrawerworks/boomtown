@@ -471,6 +471,134 @@ test("a loan's interest at Payday is a tenth, rounded up to the next $5, and nev
   }
 });
 
+test("City Hall adds RULES.hall to a district's land, and land stays between its least and its most", () => {
+  const s = G.newGame({ seats: seats(), seed: 9 });
+  s.land.mill = 1.22; s.players[0].pos = 18;
+  goTo(s, at('City Hall'));
+  assert.equal(s.pending.kind, 'hall');
+  assert.deepEqual(G.decide(s, 'mill').find(e => e.t === 'land'), { t: 'land', d: 'mill', from: 1.22, to: Math.round((1.22 + G.RULES.hall) * 1000) / 1000 });
+  // Near the top it goes only as high as land goes, and at the top nothing moves.
+  for (const [from, to] of [[G.RULES.landMax - 0.1, G.RULES.landMax], [G.RULES.landMax, G.RULES.landMax]]) {
+    const t = G.newGame({ seats: seats(), seed: 9 });
+    t.land.hill = from; t.players[0].pos = 18;
+    goTo(t, at('City Hall'));
+    const ev = G.decide(t, 'hill');
+    assert.equal(t.land.hill, to);
+    assert.equal(ev.some(e => e.t === 'land'), from !== to, 'a land event only when the land moved');
+    assert.ok(ev.some(e => e.t === 'rezone'));
+  }
+  // At the bottom: a bust in the Gazette, or a sale, takes land no lower than the least.
+  const u = G.newGame({ seats: seats(), seed: 9 });
+  u.land.river = G.RULES.landMin + 0.05; u.deck = ['bust-river']; u.players[0].pos = 1;
+  goTo(u, 3);
+  assert.equal(u.land.river, G.RULES.landMin);
+  const lot = LOTS_IN.river[0];
+  u.owner[lot] = 0; u.level[lot] = 1; u.phase = 'manage';
+  assert.equal(G.sell(u, lot).some(e => e.t === 'land'), false);
+  assert.equal(u.land.river, G.RULES.landMin);
+});
+
+test('the Lumberyard builds one level on one of your lots at half its cost', () => {
+  const s = G.newGame({ seats: seats(), seed: 10 });
+  const [a] = LOTS_IN.mill, theirs = LOTS_IN.main[0];
+  s.owner[a] = 0; s.owner[theirs] = 1; s.players[0].pos = 8;
+  goTo(s, at('Lumberyard'));
+  assert.equal(s.pending.kind, 'yard');
+  assert.throws(() => G.decide(s, theirs), /Not yours/);
+  const land = s.land.mill;
+  G.decide(s, a);
+  assert.equal(s.level[a], 1);
+  assert.equal(s.players[0].cash, 1000 - Math.round(G.buildCost(a) / 2));
+  assert.equal(s.land.mill, Math.round((land + G.RULES.rise) * 1000) / 1000, 'it lifts the street as any build does');
+  // With nothing of yours to build on, the Lumberyard asks nothing.
+  const t = G.newGame({ seats: seats(), seed: 10 });
+  t.players[0].pos = 8;
+  goTo(t, at('Lumberyard'));
+  assert.equal(t.pending, null);
+});
+
+test('the Estate sale sells any empty lot, not a depot, at half its land value to the $5', () => {
+  const s = G.newGame({ seats: seats(), seed: 11 });
+  s.land.mill = 1.25; s.deck = ['estate']; s.players[0].pos = 1;
+  goTo(s, 3);
+  assert.equal(s.pending.kind, 'estate');
+  assert.throws(() => G.decide(s, DEPOTS[0]), /not for sale/);
+  const lot = at('Tannery Lane'); // $75 of land: half is $37.50, so $40
+  G.decide(s, lot);
+  assert.deepEqual([s.owner[lot], s.players[0].cash], [0, 1000 - 40]);
+});
+
+test('the Land Office sells any empty lot or depot at its price', () => {
+  const s = G.newGame({ seats: seats(), seed: 12 });
+  s.players[0].pos = 4;
+  goTo(s, at('Land Office'));
+  assert.equal(s.pending.kind, 'office');
+  G.decide(s, DEPOTS[0]);
+  assert.deepEqual([s.owner[DEPOTS[0]], s.players[0].cash], [0, 1000 - SPACES[DEPOTS[0]].price]);
+  const t = G.newGame({ seats: seats(), seed: 12 });
+  t.players[0].pos = 4; t.owner[DEPOTS[0]] = 1;
+  goTo(t, at('Land Office'));
+  assert.throws(() => G.decide(t, DEPOTS[0]), /not for sale/, "someone's depot");
+});
+
+test('the Assessor charges every building level, never less than its least, into the kitty; Town Square pays the kitty out', () => {
+  for (const [levels, charge] of [[0, G.RULES.taxMin], [1, G.RULES.taxMin], [3, 3 * G.RULES.taxPerLevel]]) {
+    const s = G.newGame({ seats: seats(), seed: 13 });
+    const lots = LOTS_IN.main;
+    lots.forEach((i, k) => { s.owner[i] = 0; s.level[i] = k < levels ? 1 : 0; });
+    const kitty = s.kitty, cash = s.players[0].cash;
+    s.players[0].pos = 20;
+    goTo(s, at('Assessor'));
+    assert.deepEqual([s.players[0].cash, s.kitty], [cash - charge, kitty + charge], `${levels} levels`);
+  }
+  const t = G.newGame({ seats: seats(), seed: 13 });
+  t.kitty = 175; t.players[0].pos = 11;
+  const ev = goTo(t, at('Town Square'));
+  assert.deepEqual([t.players[0].cash, t.kitty], [1175, 0]);
+  assert.deepEqual(ev.find(e => e.t === 'kitty'), { t: 'kitty', p: 0, amount: 175 });
+  t.phase = 'manage'; G.endTurn(t); t.players[1].pos = 11;
+  goTo(t, at('Town Square'));
+  assert.equal(t.players[1].cash, 1050, 'an empty kitty pays nothing');
+});
+
+test("depot rent: one depot's, or both depots' when one player owns both, and no forced sale then", () => {
+  const s = G.newGame({ seats: seats(), seed: 14 });
+  const [a, b] = DEPOTS;
+  s.owner[a] = 1;
+  assert.equal(G.rentFor(s, a), G.RULES.depotRent[1]);
+  assert.notEqual(G.buyoutPrice(s, a), null);
+  s.owner[b] = 1;
+  assert.equal(G.rentFor(s, a), G.RULES.depotRent[2]);
+  assert.equal(G.buyoutPrice(s, a), null);
+  s.players[0].pos = 2;
+  goTo(s, a);
+  assert.deepEqual([s.pending.kind, s.pending.rent, s.pending.buyout], ['rent', G.RULES.depotRent[2], null]);
+});
+
+test('detours: Payday gives one back, but never more than RULES.detourMax', () => {
+  const s = G.newGame({ seats: seats(), seed: 15 });
+  assert.equal(s.players[0].detours, G.RULES.detourMax);
+  s.players[0].pos = 25;
+  goTo(s, 2);
+  assert.equal(s.players[0].detours, G.RULES.detourMax);
+});
+
+test('a building can be sold back only before rolling or after the space is dealt with', () => {
+  const s = G.newGame({ seats: seats(), seed: 16 });
+  const lot = LOTS_IN.main[0];
+  s.owner[lot] = 0; s.level[lot] = 1;
+  s.dice = [2, 3]; s.phase = 'move';
+  assert.throws(() => G.sell(s, lot), /not time to sell/, 'while moving');
+  s.players[0].pos = 1;
+  goTo(s, at('Cider Press'));
+  assert.equal(s.phase, 'decide');
+  assert.throws(() => G.sell(s, lot), /not time to sell/, 'while deciding');
+  assert.equal(s.level[lot], 1);
+  G.decide(s, 'pass');
+  G.sell(s, lot);
+  assert.equal(s.level[lot], 0);
+});
+
 // Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the
 // bank, the kitty, loans), a loan is held only with no cash, and every turn ends with nothing left pending.
 function mk(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
