@@ -147,11 +147,12 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     // Destination badges and build badges.
     // The tall board is drawn smaller on a phone, so its badges are bigger, and sit a little further in.
     const big = H > SIZE, R = big ? 24 : 19, B = big ? 17 : 13, inset = big ? 5 : 0;
+    // A move by both dice has a brick badge, as its button is; a detour's is gold; one that can't be made is grey.
     let m = '', top = '';
     for (const d of dests) {
       const L = layout(d.to), r = L.r;
       const bx = L.badge[0] + (L.badge[0] < r.x + r.w / 2 ? inset : -inset), by = L.badge[1] + inset;
-      const cls = d.usable === false ? ' off' : '';
+      const cls = (d.usable === false ? ' off' : '') + (d.detour ? '' : ' both');
       m += `<g class="dest${cls}" data-i="${d.to}"><rect x="${r.x + 4}" y="${r.y + 4}" width="${r.w - 8}" height="${r.h - 8}" rx="8"/></g>`;
       top += `<g class="badge${cls}" data-i="${d.to}" transform="translate(${bx} ${by})"><circle r="${R}"/><text y="${big ? 10 : 7}">${d.label}</text></g>`;
     }

@@ -220,7 +220,7 @@ function render() {
   if (human && s.phase === 'move') {
     dests = G.moveOptions(s).map(o => {
       labels[o.to] = `${o.detour ? 'Detour' : 'Both dice'}, ${o.steps}: ${o.usable ? 'lands here' : 'no detours left'}.`;
-      return { to: o.to, label: o.steps, usable: o.usable };
+      return { to: o.to, label: o.steps, usable: o.usable, detour: o.detour };
     });
   }
   if (human && s.phase === 'manage') {

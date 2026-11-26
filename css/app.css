@@ -89,6 +89,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .badge { cursor: pointer; }
 #board .badge circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; }
 #board .badge text { font-size: 22px; fill: var(--ink); }
+#board .badge.both circle { fill: var(--brick); }
+#board .badge.both text { fill: #fff; }
 #board .dest.off rect { stroke: #9a8f7c; fill: transparent; animation: none; }
 #board .badge.off circle { fill: #d6ccb6; }
 @keyframes march { to { stroke-dashoffset: -44; } }

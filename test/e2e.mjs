@@ -551,13 +551,17 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
 }
 
 // Tapping a space a move reaches makes that move, on its number badge (drawn over the pieces, so they never hide it) or
-// anywhere on the space; tapping the badge of a greyed one (a detour with none left) says why not.
+// anywhere on the space; tapping the badge of a greyed one (a detour with none left) says why not. The move by both dice
+// has a badge of its own colour, as its button has.
 await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
 {
   const moves = await page.evaluate(() => window.boomtown.G.moveOptions(window.boomtown.state));
   const off = moves.find(o => !o.usable), both = moves.find(o => !o.detour);
   assert.equal(await page.$$eval('#board .badge', bs => bs.filter(b => b.closest('svg').querySelector('.tokens').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).length), 3,
     'the badges are not drawn over the pieces');
+  assert.deepEqual(await page.$$eval('#board .badge.both', bs => bs.map(b => +b.dataset.i)), [both.to], 'the move by both dice is not marked as one');
+  assert.equal(await page.$eval(`#board .badge[data-i="${both.to}"] circle`, c => getComputedStyle(c).fill === getComputedStyle(document.querySelector('.primary')).backgroundColor), true,
+    "the badge of the move by both dice is not the brick of its button (a detour's is gold)");
   await page.click(`#board .badge[data-i="${off.to}"] circle`);
   assert.equal(await page.textContent('#say'), 'No detours left until Payday.', 'a greyed badge says nothing when tapped');
   assert.equal(await page.evaluate(() => window.boomtown.state.phase), 'move');
