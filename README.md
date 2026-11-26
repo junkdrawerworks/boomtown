@@ -23,8 +23,11 @@
 - **The Gazette.** Headlines move land values up and down, pay out at the county fair, or burst your pipes. An estate sale lets you buy any empty lot at half price.
 - **Nobody goes out.** Can't pay? The bank lends you the rest and adds a tenth, rounded up to the next $5 (at least $5), each time you pass Payday, and money coming in pays it off first. You can also sell buildings back for half what they cost.
 - **The townsfolk.** Mabel keeps a cushion, Rusty buys anything with a fence round it, Dot wants whole streets and will force a sale to get one, and Gus would rather build than buy. Any seat can be a person instead, to pass the phone round. A tap on the middle of the board hurries a townsperson's turn along.
+- **See who owns what.** A tap on a player's card shows their cash, loan, detours and lots, with each lot's rent. The Land Office's list says what each lot would rent for and who owns the rest of its district, with any lot that would finish one of yours at the top.
+- **Take it back.** Tapped Leave it when you meant Buy it? Take it back, under the line in the middle, undoes your last choice on your turn: a move, a buy, a lot left for sale, a forced sale, a build or a sale. Not a roll, nor a move that drew a Gazette headline, and not once your turn is over.
 - **Short, Standard or Long.** Fewer players get more rounds, so the town still fills up: a standard game is 20 rounds for four players, 30 for two.
 - **Founders' Day.** The Gazette's special edition says who's richest and by how much, with the game's biggest rent, and Share the Gazette sends the standings on as a few lines of text.
+- **Records** keep how often you've beaten each of the townsfolk, and your last five games, in the Gazette's almanac.
 - No account and no server. A game in progress is saved in your browser, so you can close it and carry on. It works offline and installs to a phone's home screen.
 
 ## Running it
