@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../js/game.js';
 import { botStep, BOTS, chooseDecision, scoreSpace } from '../js/bots.js';
-import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS } from '../js/board.js';
+import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS, DISTRICTS } from '../js/board.js';
 import { CARDS } from '../js/cards.js';
 import * as W from '../js/words.js';
 
@@ -419,4 +419,62 @@ test("a townsperson reckons the Estate sale's half price to the $5, as the sale 
   t.players[0].cash = 38;
   t.pending = { kind: 'estate' }; t.phase = 'decide';
   assert.doesNotThrow(() => G.decide(t, chooseDecision(t)));
+});
+
+// Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the
+// bank, the kitty, loans), a loan is held only with no cash, and every turn ends with nothing left pending.
+function mk(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function legal(s) {
+  const q = s.pending, p = s.turn, pl = G.current(s), half = i => Math.round(G.landValue(s, i) / 2 / 5) * 5;
+  switch (q.kind) {
+    case 'buy': return pl.cash >= q.price ? ['buy', 'pass'] : ['pass'];
+    case 'rent': return q.buyout != null && pl.cash >= q.buyout ? ['pay', 'buyout'] : ['pay'];
+    case 'office': return [...G.emptyLots(s).filter(i => pl.cash >= G.landValue(s, i)), 'pass'];
+    case 'estate': return [...G.emptyLots(s).filter(i => SPACES[i].type === 'lot' && pl.cash >= half(i)), 'pass'];
+    case 'yard': return [...OWNABLE.filter(i => G.canBuild(s, p, i, 0.5).ok), 'pass'];
+    case 'hall': return DISTRICTS.map(d => d.id);
+  }
+}
+test('random players and bots: money adds up and nothing is left over between turns', () => {
+  const wealth = s => s.players.reduce((t, p) => t + p.cash - p.debt, 0) + s.kitty;
+  const NEXT = { roll: ['roll', 'move'], move: ['decide', 'manage'], decide: ['manage'], manage: ['manage', 'roll', 'over'] };
+  for (let g = 0; g < 120; g++) {
+    const n = 2 + g % 3, r = mk(g + 1), names = Object.keys(BOTS);
+    const s = G.newGame({ seats: Array.from({ length: n }, (_, k) => (k + g) % 2 ? { name: 'P' + k, kind: 'human', token: k } : { name: names[k], kind: 'bot', bot: names[k], token: k }), rounds: 8, seed: g + 1 });
+    const pick = a => a[Math.floor(r() * a.length)];
+    let turns = 0;
+    while (s.phase !== 'over') {
+      const before = wealth(s), phase = s.phase, turn = s.turn;
+      let ev;
+      if (G.current(s).kind === 'bot') ev = botStep(s);
+      else if (s.phase === 'roll') ev = G.roll(s);
+      else if (s.phase === 'move') { const o = pick(G.moveOptions(s).filter(o => o.usable)); ev = G.move(s, o.steps, o.detour); }
+      else if (s.phase === 'decide') ev = G.decide(s, pick(legal(s)));
+      else { const b = OWNABLE.filter(i => G.canBuild(s, s.turn, i).ok), x = r(); ev = x < 0.3 && b.length ? G.build(s, pick(b)) : x < 0.35 && OWNABLE.some(i => G.canSell(s, s.turn, i)) ? G.sell(s, pick(OWNABLE.filter(i => G.canSell(s, s.turn, i)))) : G.endTurn(s); }
+      // the bank's money in and out, as the events tell it
+      let bank = 0;
+      for (const e of ev) {
+        if (e.t === 'collect' && e.why !== 'the kitty') bank += e.amount;
+        if (e.t === 'pay' && e.to === 'bank') bank -= e.amount;
+        if (e.t === 'interest') bank -= e.amount;
+      }
+      const ctx = `(game ${g}, round ${s.round}, ${phase} -> ${s.phase})`;
+      assert.equal(wealth(s), before + bank, `money adds up ${ctx}`);
+      assert.ok(phase === s.phase || NEXT[phase].includes(s.phase), `phase ${ctx}`);
+      assert.equal(s.pending != null, s.phase === 'decide', `pending only while deciding ${ctx}`);
+      for (const p of s.players) {
+        assert.ok(p.cash >= 0 && Number.isInteger(p.cash) && Number.isInteger(p.debt), `cash ${ctx}`);
+        assert.ok(p.debt === 0 || p.cash === 0, `a loan with cash in hand ${ctx}`);
+        assert.ok(p.detours >= 0 && p.detours <= G.RULES.detourMax, `detours ${ctx}`);
+      }
+      for (const i of OWNABLE) {
+        assert.ok(s.level[i] >= 0 && s.level[i] <= G.RULES.maxLevel, `level ${ctx}`);
+        if (s.level[i] === G.RULES.maxLevel) assert.ok(G.ownsDistrict(s, s.owner[i], SPACES[i].district), `a block without its district ${ctx}`);
+      }
+      for (const d of DISTRICTS) assert.ok(s.land[d.id] >= G.RULES.landMin && s.land[d.id] <= G.RULES.landMax, `land ${ctx}`);
+      if (phase === 'manage' && s.phase !== 'manage') { turns++; assert.equal(s.dice, null); assert.equal(s.pending, null); assert.notEqual(s.turn, turn); }
+    }
+    assert.equal(turns, 8 * n, `every seat gets exactly ${8} turns (game ${g})`);
+    assert.ok(s.players.every(p => p.history.length === 9));
+  }
 });
