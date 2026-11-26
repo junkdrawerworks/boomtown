@@ -708,6 +708,18 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.ok((await page.evaluate(() => window.boomtown.state.log.join(' '))).includes('Rusty rolled'), "the log doesn't say what Rusty did");
 }
 
+// A townsperson's Gazette headline shows over the middle of the board, inside it and clear of the spaces round it, so
+// where they landed still shows: here Rusty, with no detours, can only move by both dice, onto the Gazette at the top.
+await scene("s.turn = 1; s.phase = 'move'; s.dice = [3, 4]; s.players[1].pos = 9; s.players[1].detours = 0; s.deck.unshift('boom-hill');");
+{
+  await page.waitForSelector('#toast:not([hidden])', { timeout: 10000 });
+  const [toast, board, middle] = await page.evaluate(() => ['#toast', '#board', '#center'].map(q => document.querySelector(q).getBoundingClientRect().toJSON()));
+  assert.match(await page.textContent('#toast'), /Hilltop/i);
+  assert.ok(toast.top >= middle.top && toast.bottom <= middle.bottom && toast.left >= middle.left && toast.right <= middle.right,
+    `the townsfolk's headline is not inside the middle of the board: ${JSON.stringify({ toast, middle, board })}`);
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+}
+
 // In the menu one tap on Sound or Pace changes it once, however many times the menu has been opened. (Opened twice,
 // both end where they started.)
 await scene();
