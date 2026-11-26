@@ -99,6 +99,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .can-build path { stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; }
 #board .can-build { pointer-events: none; animation: breathe 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes breathe { 50% { transform: scale(1.15); } }
+/* Pieces and flourishes sit over the spaces but take no taps: a tap on a piece reaches the space it stands on. */
+#board .tokens, #board .fx { pointer-events: none; }
 #board .focus-ring { fill: none; stroke: var(--brick); stroke-width: 6; pointer-events: none; }
 
 /* the middle of the board: dice, a line of news, the buttons */

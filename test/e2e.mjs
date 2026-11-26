@@ -218,6 +218,16 @@ for (const width of [390, 375]) {
 }
 await page.setViewportSize({ width: 390, height: 844 });
 
+// A tap on a piece reaches the space it stands on: the lot's sheet opens.
+await scene('s.players[0].pos = 17;');
+{
+  const box = await page.$eval('#board .tokens', g => { const r = [...g.children].at(-1).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  await page.mouse.click(box.x, box.y);
+  assert.equal(await sheetOpen(), true, 'a tap on a piece opens nothing');
+  assert.match(await page.textContent('#sheet h2'), /Main Street/);
+  await page.click('#sheet [data-close]');
+}
+
 // The tall board's tags are big enough to read on a phone, written like every other amount ($1,440), and stay
 // inside their cells; the Payday corner says what Payday pays.
 await scene("B.LOTS_IN.bank.forEach(i => { s.owner[i] = 3; s.level[i] = 3; }); s.land.bank = 1.6;");
