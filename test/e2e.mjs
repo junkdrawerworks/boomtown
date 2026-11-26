@@ -821,6 +821,39 @@ await page.click('#sheet [data-close]');
   await sound(); // off again
 }
 
+// Share the Gazette sends Founders' Day through the phone's share sheet, or, with none, copies it and says so; where
+// neither works it isn't offered. (The share sheet and the clipboard are stand-ins here that note what they're given.)
+{
+  const over = async (share, clip) => {
+    await page.evaluate(([share, clip]) => {
+      window.sent = null;
+      Object.defineProperty(navigator, 'share', { configurable: true, value: share ? async d => { window.sent = ['share', d.text]; } : undefined });
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clip ? { writeText: async t => { window.sent = ['copy', t]; } } : undefined });
+    }, [share, clip]);
+    await scene('s.phase = "over";');
+    await page.waitForSelector('#sheet .standings li');
+  };
+  const text = () => page.evaluate(() => {
+    const s = window.boomtown.state, st = window.boomtown.G.standings(s);
+    const name = q => (s.players[q].name === 'You' ? `Player ${s.players[q].token + 1}` : s.players[q].name);
+    return [`THE BOOMTOWN GAZETTE, Founders' Day (${s.rounds} rounds): ${name(st[0].p)} is the richest in Boomtown.`, ...st.map((x, k) => `${k + 1}. ${name(x.p)} $${x.worth.toLocaleString('en-US')}`), 'boomtown.junkdrawer.works'].join('\n');
+  });
+  await over(true, true);
+  await page.click('#sheet [data-a="share"]');
+  assert.deepEqual(await page.evaluate(() => window.sent), ['share', await text()], 'Share the Gazette does not send the standings through the share sheet');
+  await page.click('#sheet [data-close]');
+  await over(false, true);
+  await page.click('#sheet [data-a="share"]');
+  await page.waitForSelector('#sheet .shared:not([hidden])');
+  assert.deepEqual(await page.evaluate(() => window.sent), ['copy', await text()], 'Share the Gazette does not copy the standings where there is no share sheet');
+  assert.equal(await page.textContent('#sheet .shared'), 'Copied. Paste it wherever you like.');
+  await page.click('#sheet [data-close]');
+  await over(false, false);
+  assert.equal(await page.$$eval('#sheet [data-a="share"]', b => b.length), 0, 'Share the Gazette is offered where it can neither share nor copy');
+  await page.click('#sheet [data-close]');
+  await page.evaluate(() => { delete navigator.share; delete navigator.clipboard; }); // back to the browser's own
+}
+
 // Founders' Day closed any way, by Escape, a tap outside it or its ✕, leaves its headline and See the results on the
 // board, which opens it again. A player with a loan is shown owing it, as on their card, never with cash below nothing.
 for (const how of ['Escape', 'scrim', '✕']) {

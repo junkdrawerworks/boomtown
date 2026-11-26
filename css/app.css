@@ -424,6 +424,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .standings .nm { font-weight: 800; }
 .standings .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
 .standings .w { font: 18px var(--slab); font-variant-numeric: tabular-nums; }
+.sheet .buttons .shared { margin: -2px 0 0; text-align: center; }
 .chart { width: 100%; height: auto; display: block; margin-top: 6px; }
 .chart text { font: 600 11px var(--sans); fill: var(--muted); }
 .chart .who { font-size: 13px; font-weight: 800; text-anchor: start; }

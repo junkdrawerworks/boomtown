@@ -1169,7 +1169,8 @@ function finish() {
       <div class="head" id="sheetTitle">${head}</div><div class="body">${esc(story)}</div>${fact ? `<div class="fact">${esc(fact)}</div>` : ''}</div>
     <ol class="standings">${rows}</ol>
     <h3>Worth, round by round</h3>${chart()}
-    <div class="buttons"><button class="primary" data-a="again">Play again</button><button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true, onClose: toTown });
+    <div class="buttons"><button class="primary" data-a="again">Play again</button>${canShare() ? '<button class="secondary" data-a="share">Share the Gazette</button><p class="note shared" role="status" hidden></p>' : ''}<button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true, onClose: toTown });
+  body.querySelector('[data-a="share"]')?.addEventListener('click', () => share(W.shareText(s, st), body.querySelector('.shared')));
   body.querySelector('[data-a="again"]').addEventListener('click', () => {
     // Who goes first moves one seat round the table each game, so the same player doesn't always start, with the
     // least cash. Everyone keeps their piece.
@@ -1179,6 +1180,17 @@ function finish() {
   });
   body.querySelector('[data-a="title"]').addEventListener('click', () => { store.del(KEY); showTitle(); });
   body.querySelector('[data-a="board"]').addEventListener('click', () => { closeSheet(); toTown(); });
+}
+
+// Share the Gazette: through the phone's share sheet where there is one, or else copied, to paste. Where neither
+// works, Founders' Day doesn't offer it.
+const canShare = () => !!(navigator.share || navigator.clipboard?.writeText);
+async function share(text, said) {
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } // dismissed: nothing to say
+  }
+  try { await navigator.clipboard.writeText(text); said.textContent = 'Copied. Paste it wherever you like.'; } catch { said.textContent = "This browser won't let the page copy it."; }
+  said.hidden = false;
 }
 
 function chart() {

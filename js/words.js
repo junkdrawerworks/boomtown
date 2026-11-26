@@ -112,6 +112,15 @@ export function foundersDay(s, st) {
   return [story, fact];
 }
 
+// Founders' Day as a few lines of text to send through the phone's share sheet, or to paste: the headline, the
+// standings and where to play. Read by someone who wasn't at the table, so a person called You goes by their seat
+// ("Player 1"), as at a table of several people.
+export function shareText(s, st) {
+  const name = q => (isYou(s.players[q]) ? `Player ${s.players[q].token + 1}` : s.players[q].name);
+  return [`THE BOOMTOWN GAZETTE, Founders' Day (${s.rounds} rounds): ${name(st[0].p)} is the richest in Boomtown.`,
+    ...st.map((x, k) => `${k + 1}. ${name(x.p)} ${money(x.worth)}`), 'boomtown.junkdrawer.works'].join('\n');
+}
+
 // How to play.
 export function rulesHtml() {
   return `<div class="rules"><h2 id="sheetTitle">How to play</h2>

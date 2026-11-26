@@ -748,3 +748,12 @@ test("Founders' Day's story and its fact", () => {
   s.biggestRent.from = 0;
   assert.equal(W.foundersDay(s, st([[0, 3040], [1, 2720], [2, 1000]]))[1], 'Biggest rent: You paid Dot $300 on Ferry Landing, in round 1.');
 });
+
+// Share the Gazette sends Founders' Day as text: the headline, the standings and where to play, with a person called You
+// going by their seat, since whoever reads it wasn't at the table.
+test("Founders' Day as text to share", () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Dot', kind: 'bot', bot: 'dot', token: 3 }], rounds: 30, seed: 3 });
+  assert.equal(W.shareText(s, [{ p: 1, worth: 3040 }, { p: 0, worth: 2722 }]),
+    "THE BOOMTOWN GAZETTE, Founders' Day (30 rounds): Dot is the richest in Boomtown.\n1. Dot $3,040\n2. Player 1 $2,722\nboomtown.junkdrawer.works");
+  assert.match(W.shareText(s, [{ p: 0, worth: 3040 }, { p: 1, worth: 2722 }]), /^THE BOOMTOWN GAZETTE, Founders' Day \(30 rounds\): Player 1 is the richest in Boomtown\.\n1\. Player 1 \$3,040\n/);
+});
