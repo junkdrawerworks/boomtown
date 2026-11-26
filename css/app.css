@@ -120,8 +120,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .center.snug { gap: 4px; padding: 4px; }
 .center.snug .dice .die { width: calc(var(--bw) * .10); height: calc(var(--bw) * .10); }
 .center.snug .actions { gap: 4px; }
-.center.snug .move-btn { gap: 6px; padding: 3px 7px; }
-.center.snug .move-btn .n { font-size: 19px; min-width: 1.1em; }
+.center.snug .move-btn { gap: 6px; padding: 3px 7px 3px 13px; }
+.center.snug .move-btn .n { width: 28px; height: 28px; font-size: 16px; }
 .center.snug .move-btn .what { font-size: 12px; line-height: 1.12; }
 .dice.rolling .die { animation: tumble .45s ease-out; }
 @keyframes tumble { 0% { transform: translateY(-14px) rotate(-200deg) scale(.7); } 70% { transform: translateY(2px) rotate(10deg); } 100% { transform: none; } }
@@ -156,8 +156,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* A sheet or its heading takes the focus only so a screen reader starts there: no ring. */
 .sheet:focus-visible, .sheet [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; }
 
-.move-btn { display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 10px; }
-.move-btn .n { font: 22px var(--slab); min-width: 1.4em; text-align: center; }
+/* The moves look alike, on cream, so the screen doesn't suggest one: each has an edge and a number in the colour of its
+   badge on the board, brick for both dice and gold for a detour (grey, as on the board, for one that can't be made). */
+.move-btn {
+  --edge: var(--gold); --on-edge: var(--ink);
+  display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 10px 6px 16px;
+  background: linear-gradient(to right, var(--edge) 0 7px, var(--ink) 7px 9px, var(--card) 9px);
+}
+.move-btn.both { --edge: var(--brick); --on-edge: #fff; }
+.move-btn:disabled { --edge: #d6ccb6; --on-edge: var(--ink); }
+.move-btn .n {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--edge); color: var(--on-edge);
+  display: grid; place-items: center; font: 19px/1 var(--slab);
+}
+.move-btn .rent { font-weight: 800; }
 .move-btn .what { font-size: 12.5px; font-weight: 600; line-height: 1.2; }
 .move-btn .what b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 .detours { font-size: 12px; font-weight: 700; color: var(--muted); }

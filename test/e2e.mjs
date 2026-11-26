@@ -894,18 +894,37 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }
 
-// White on the brick buttons, and the small BOTH DICE over a move, read at 4.5:1 or better, as small text needs.
-await scene("s.dice = [2, 5]; s.phase = 'move';");
+// The moves are drawn alike, so the screen doesn't suggest one: the same cream button, each with its number in the
+// colour of its badge on the board (brick for both dice, gold for a detour). A rent is written in the colour of the
+// owner's rent tag on the board, and it, the number on brick and the small BOTH DICE read at 4.5:1 or better.
+await scene("s.players[0].pos = 4; s.owner[11] = 1; s.owner[8] = 3; s.level[11] = 0; s.level[8] = 0; s.dice = [3, 4]; s.phase = 'move';");
 {
-  const ratios = await page.$$eval('.move-btn.primary, .move-btn.primary .what b', els => els.map(el => {
-    const rgb = v => v.match(/[\d.]+/g).map(Number);
+  const m = await page.evaluate(() => {
+    const rgb = v => v.match(/[\d.]+/g).map(Number).slice(0, 3);
     const lum = ([r, g, b]) => [r, g, b].map(x => x / 255).map(x => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)).reduce((n, x, k) => n + x * [0.2126, 0.7152, 0.0722][k], 0);
-    const bg = rgb(getComputedStyle(el.closest('.move-btn')).backgroundColor), fg = rgb(getComputedStyle(el).color), a = +getComputedStyle(el).opacity;
-    const seen = fg.slice(0, 3).map((x, k) => x * a + bg[k] * (1 - a)); // a faded label is seen mixed with what's behind it
-    const [hi, lo] = [lum(seen), lum(bg)].sort((x, y) => y - x);
-    return Math.round((hi + 0.05) / (lo + 0.05) * 100) / 100;
-  }));
-  assert.ok(ratios.length === 2 && ratios.every(r => r >= 4.5), `white on brick reads at ${ratios.join(' and ')} to 1, under 4.5`);
+    const ratio = (a, b) => { const [hi, lo] = [lum(rgb(a)), lum(rgb(b))].sort((x, y) => y - x); return Math.round((hi + 0.05) / (lo + 0.05) * 100) / 100; };
+    const card = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
+    const hex = h => `rgb(${[1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)).join(', ')})`;
+    return [...document.querySelectorAll('.move-btn')].map(b => {
+      const cs = getComputedStyle(b), n = b.querySelector('.n'), rent = b.querySelector('.rent');
+      const to = window.boomtown.G.moveOptions(window.boomtown.state).find(o => String(o.steps) === n.textContent && o.detour === /^Detour/.test(b.querySelector('.what b').textContent)).to;
+      const badge = document.querySelector(`#board .badge[data-i="${to}"] circle`), tag = document.querySelector(`#board .cell[data-i="${to}"] text.pill`)?.previousElementSibling;
+      return {
+        look: [cs.backgroundImage.split(' 7px, ')[1] /* past the coloured edge */, cs.borderTopColor, cs.color, b.className.replace(/\b(both|detour)\b/, '').trim()].join(' | '),
+        n: getComputedStyle(n).backgroundColor, badge: badge && getComputedStyle(badge).fill,
+        nRatio: ratio(getComputedStyle(n).color, getComputedStyle(n).backgroundColor), kick: ratio(getComputedStyle(b.querySelector('.what b')).color, hex(card)),
+        rent: rent && getComputedStyle(rent).color, tag: tag && getComputedStyle(tag).fill, rentRatio: rent && ratio(getComputedStyle(rent).color, hex(card)),
+      };
+    });
+  });
+  assert.equal(m.length, 3, 'the scene has lost its three moves');
+  assert.equal(new Set(m.map(b => b.look)).size, 1, `the move buttons are not drawn alike: ${JSON.stringify(m.map(b => b.look))}`);
+  for (const b of m) assert.equal(b.n, b.badge, "a move's number is not the colour of its badge on the board");
+  assert.equal(new Set(m.map(b => b.n)).size, 2, 'both dice and a detour have numbers of the same colour');
+  const rents = m.filter(b => b.rent);
+  assert.equal(rents.length, 2, 'the scene has lost its two moves that pay rent');
+  for (const b of rents) assert.equal(b.rent, b.tag, "a move's rent is not written in the colour of the owner's rent tag");
+  assert.ok(m.every(b => b.nRatio >= 4.5 && b.kick >= 4.5) && rents.every(b => b.rentRatio >= 4.5), `the moves' small text reads under 4.5 to 1: ${JSON.stringify(m)}`);
 }
 
 // In a stack of pieces, the piece whose turn it is is drawn on top, whatever its seat.
@@ -922,8 +941,8 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.equal(await page.$$eval('#board .badge', bs => bs.filter(b => b.closest('svg').querySelector('.tokens').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).length), 3,
     'the badges are not drawn over the pieces');
   assert.deepEqual(await page.$$eval('#board .badge.both', bs => bs.map(b => +b.dataset.i)), [both.to], 'the move by both dice is not marked as one');
-  assert.equal(await page.$eval(`#board .badge[data-i="${both.to}"] circle`, c => getComputedStyle(c).fill === getComputedStyle(document.querySelector('.primary')).backgroundColor), true,
-    "the badge of the move by both dice is not the brick of its button (a detour's is gold)");
+  assert.equal(await page.$eval(`#board .badge[data-i="${both.to}"] circle`, c => getComputedStyle(c).fill === getComputedStyle(document.querySelector('.move-btn.both .n')).backgroundColor), true,
+    "the badge of the move by both dice is not the brick of its button's number (a detour's is gold)");
   await page.click(`#board .badge[data-i="${off.to}"] circle`);
   assert.equal(await page.textContent('#say'), 'No detours left until Payday.', 'a greyed badge says nothing when tapped');
   assert.equal(await page.evaluate(() => window.boomtown.state.phase), 'move');

@@ -4,6 +4,9 @@
 export const INK = '#2a2420';
 export const PAPER = '#f3e9cf';
 export const PLAYER_COLORS = ['#dd4a2f', '#2d63cf', '#1f9658', '#de4f8d'];
+// A player's colour a fifth of the way to ink, for their rent tags on the board and their rents written on paper: white
+// on it, or it on the cream paper, reads at 4.5:1 or better.
+export const tagColor = hex => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * 0.8 + parseInt(INK.slice(k, k + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
 export const TOKEN_NAMES = ['button', 'bottle cap', 'marble', 'key'];
 
 const s = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;

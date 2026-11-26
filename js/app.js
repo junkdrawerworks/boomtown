@@ -257,7 +257,9 @@ function render() {
     if (OWNABLE.some(i => s.owner[i] === p)) a.append(btn('Your lots', 'ghost', () => showLots()));
   } else if (s.phase === 'move') {
     for (const o of G.moveOptions(s)) {
-      const b = btn('', (o.detour ? 'secondary' : 'primary') + ' move-btn', () => onMove(o), o.usable && !a.querySelector('[data-main]'));
+      // All alike, cream, so none looks like the one to take: the edge and the number are the colour of the move's badge
+      // on the board, brick for both dice and gold for a detour.
+      const b = btn('', 'secondary move-btn ' + (o.detour ? 'detour' : 'both'), () => onMove(o), o.usable && !a.querySelector('[data-main]'));
       b.disabled = !o.usable;
       b.innerHTML = `<span class="n">${o.steps}</span><span class="what"><b>${o.detour ? 'Detour, one die' : 'Both dice'}</b>${preview(o)}</span>`;
       a.append(b);
@@ -327,7 +329,7 @@ function preview(o) {
       else if (w === p) parts.push(`${esc(sp.name)}, yours`);
       else {
         const sale = saleOffered(o);
-        parts.push(`${esc(sp.name)}: rent ${money(G.rentFor(s, o.to))} to ${nm(w)}${sale != null ? ` · or make them sell, ${money(sale)}` : ''}`);
+        parts.push(`${esc(sp.name)}: rent <span class="rent" style="color:${art.tagColor(colorOf(w))}">${money(G.rentFor(s, o.to))}</span> to ${nm(w)}${sale != null ? ` · or make them sell, ${money(sale)}` : ''}`);
       }
       break;
     }

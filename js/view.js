@@ -10,8 +10,6 @@ const NS = 'http://www.w3.org/2000/svg';
 export const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the person asked for less motion
 const TOKEN_SCALE = 1.35, TOKEN_R = 17.5; // a piece alone is drawn 1.35 times its size; it reaches 17.5 from its middle
 const usd = n => `$${n.toLocaleString('en-US')}`; // as money() in app.js writes it
-// A player's colour a fifth of the way to ink, for the rent tags: white on it reads at 5:1 or better.
-const deepen = hex => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * 0.8 + parseInt(art.INK.slice(k, k + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
 
 // The board's height in board units: 900 makes it square; more makes it tall, for a phone held upright.
 let H = SIZE;
@@ -209,13 +207,13 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       case 'lot': {
         const lv = s.level[i];
         drawing = o < 0 ? art.forSale() : lv ? art.BUILDINGS[lv](color) : art.sold(color);
-        tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
         label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, ${usd(landValue(s, i))}.` : `${Whose(s.players[o])} ${LEVEL_NAMES[lv].toLowerCase()}, rent ${usd(rentFor(s, i))}.`);
         break;
       }
       case 'depot':
         drawing = art.depot(color);
-        tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
         label = `${sp.name}. ` + (o < 0 ? `For sale, ${usd(sp.price)}.` : `${Whose(s.players[o])} depot, rent ${usd(rentFor(s, i))}.`);
         break;
       case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
