@@ -422,6 +422,23 @@ await page.click('#sheet [data-a="rules"]');
 assert.match(await page.textContent('#sheet #sheetTitle'), /How to play/, 'How to play does not open from the menu');
 await page.click('#sheet [data-close]');
 
+// Founders' Day closed any way, by Escape, a tap outside it or its ✕, leaves its headline and See the results on the
+// board, which opens it again.
+for (const how of ['Escape', 'scrim', '✕']) {
+  await scene('s.phase = "over"; s.players[1].cash = 0; s.players[1].debt = 110;');
+  await page.waitForSelector('#sheet .standings li');
+  if (how === 'Escape') await page.keyboard.press('Escape');
+  else if (how === 'scrim') await page.mouse.click(195, 4);
+  else await page.click('#sheet [data-close]');
+  assert.equal(await sheetOpen(), false, `${how} doesn't close Founders' Day`);
+  assert.match(await page.textContent('#say'), /richest in Boomtown\. See the results$/, `closed by ${how}, Founders' Day leaves the board saying ${await page.textContent('#say')}`);
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'againLink', `closed by ${how}, the focus isn't on See the results`);
+  await page.click('#againLink');
+  await page.waitForSelector('#sheet .standings li');
+}
+await page.click('#sheet [data-a="board"]');
+assert.equal(await page.evaluate(() => document.activeElement?.id), 'againLink', 'Look at the town does not leave See the results');
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {

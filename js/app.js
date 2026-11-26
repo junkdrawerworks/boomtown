@@ -985,25 +985,27 @@ function finish() {
   s.recorded = true;
   save();
   const head = `${Who(st[0].p)} ${agree(st[0].p, 'are', 'is')} the richest in Boomtown`;
+  // Back to the board, by Look at the town or by closing the sheet any other way (✕, Escape, a tap outside it): the
+  // line says who won, with a way back to the results, since the game has no more turns to offer.
+  const toTown = () => {
+    note = `${head}. <button class="link" id="againLink">See the results</button>`;
+    render();
+    const again = $('againLink');
+    if (again) { again.onclick = finish; again.focus({ preventScroll: true }); }
+  };
   const rows = st.map(x => `<li>${art.tokenSvg(s.players[x.p].token, 28)}<span class="nm">${nm(x.p)}<small>${money(x.cash)} cash · ${money(x.land)} land · ${money(x.buildings)} buildings</small></span><span class="w">${money(x.worth)}</span></li>`).join('');
   const body = openSheet(`<div class="gazette"><div class="mast">The Boomtown Gazette</div>
       <div class="dateline"><span>Founders' Day</span><span>Special edition</span></div>
       <div class="head" id="sheetTitle">${head}</div></div>
     <ol class="standings">${rows}</ol>
     <h3>Worth, round by round</h3>${chart()}
-    <div class="buttons"><button class="primary" data-a="again">Play again</button><button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true });
+    <div class="buttons"><button class="primary" data-a="again">Play again</button><button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true, onClose: toTown });
   body.querySelector('[data-a="again"]').addEventListener('click', () => {
     const seats = s.players.map(p => ({ name: p.name, kind: p.kind, bot: p.bot, token: p.token }));
     startGame(G.newGame({ seats, rounds: s.rounds }));
   });
   body.querySelector('[data-a="title"]').addEventListener('click', () => { store.del(KEY); showTitle(); });
-  body.querySelector('[data-a="board"]').addEventListener('click', () => {
-    closeSheet();
-    note = `${head}. <button class="link" id="againLink">See the results</button>`;
-    render();
-    const again = $('againLink');
-    if (again) { again.onclick = finish; again.focus({ preventScroll: true }); }
-  });
+  body.querySelector('[data-a="board"]').addEventListener('click', () => { closeSheet(); toTown(); });
 }
 
 function chart() {
