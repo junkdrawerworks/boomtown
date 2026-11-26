@@ -11,7 +11,7 @@ export const BOTS = {
   mabel: { name: 'Mabel', line: 'Keeps a cushion and never overreaches.', reserve: 300, buy: 0.9, build: 0.8, buyout: 0.6, tall: 0.9 },
   rusty: { name: 'Rusty', line: 'Buys anything with a fence round it.', reserve: 60, buy: 1.4, build: 1.0, buyout: 1.0, tall: 0.8 },
   dot: { name: 'Dot', line: 'Wants whole streets, and will force a sale to get one.', reserve: 150, buy: 1.0, build: 1.0, buyout: 1.6, tall: 1.0, streets: true },
-  gus: { name: 'Gus', line: 'Builds tall and builds early.', reserve: 120, buy: 1.0, build: 1.4, buyout: 0.8, tall: 1.4 },
+  gus: { name: 'Gus', line: 'Would rather build than buy.', reserve: 120, buy: 1.0, build: 1.4, buyout: 0.8, tall: 1.4 },
 };
 
 const me = s => BOTS[current(s).bot] || BOTS.mabel;

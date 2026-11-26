@@ -22,7 +22,7 @@
 - **Round the board.** The Lumberyard builds one level on one of your lots at half price. The Assessor takes $20 for every building level you own, and never less than $40, into the kitty. A depot's rent is $40, or $100 when one player owns both, and nobody can make you sell a depot while you own both.
 - **The Gazette.** Headlines move land values up and down, pay out at the county fair, or burst your pipes. An estate sale lets you buy any empty lot at half price.
 - **Nobody goes out.** Can't pay? The bank lends you the rest and adds a tenth, rounded up to the next $5 (at least $5), each time you pass Payday, and money coming in pays it off first. You can also sell buildings back for half what they cost.
-- **The townsfolk.** Mabel keeps a cushion, Rusty buys anything with a fence round it, Dot wants whole streets and will force a sale to get one, and Gus builds tall. Any seat can be a person instead, to pass the phone round.
+- **The townsfolk.** Mabel keeps a cushion, Rusty buys anything with a fence round it, Dot wants whole streets and will force a sale to get one, and Gus would rather build than buy. Any seat can be a person instead, to pass the phone round.
 - **Short, Standard or Long.** Fewer players get more rounds, so the town still fills up: a standard game is 20 rounds for four players, 30 for two.
 - No account and no server. A game in progress is saved in your browser, so you can close it and carry on. It works offline and installs to a phone's home screen.
 
