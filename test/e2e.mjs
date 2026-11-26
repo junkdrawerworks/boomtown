@@ -617,6 +617,13 @@ await scene("s.players[0].detours = 2; s.dice = [2, 5]; s.phase = 'move';");
   if (await sheetOpen()) await answer();
 }
 
+// One person playing the townsfolk under their own name: Carry on says who the game is with, not their name too.
+await scene("s.players[0].name = 'Ann';", { round: 4 });
+await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));
+await page.click('#menuBtn');
+await page.click('#sheet [data-a="leave"]');
+assert.match(await page.textContent('#resumeBtn'), /^Carry on Round 4 of 20, with Rusty, Mabel and Dot$/, "Carry on lists a person playing alone among those they're playing");
+
 // Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
 await scene('', { round: 4 });
 await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));

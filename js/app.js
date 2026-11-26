@@ -176,8 +176,8 @@ function unfinished() {
 // What Carry on carries on: 'Round 4 of 20, with Rusty, Mabel and Dot'.
 function savedLine(game) {
   const and = l => (l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : l[0] || '');
-  const solo = game.players.filter(p => p.kind === 'human').length === 1 && game.players.some(p => p.name === 'You');
-  const names = game.players.map(p => p.name).filter(n => !solo || n !== 'You');
+  const solo = game.players.filter(p => p.kind === 'human').length === 1; // one person: the game is with the others
+  const names = game.players.filter(p => !solo || p.kind !== 'human').map(p => p.name);
   return `Round ${game.round} of ${game.rounds}, ${solo ? 'with ' : ''}${and(names)}`;
 }
 $('resumeBtn').addEventListener('click', () => {
