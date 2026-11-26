@@ -453,6 +453,22 @@ test('the rules text quotes the numbers in RULES', () => {
     assert.ok(text.includes(`up by ${fifth} of its first price`), `${where} doesn't say City Hall puts land up by ${fifth} of its first price`);
     assert.doesNotMatch(text, /City Hall[^.]*20%/, `${where} says City Hall puts land up 20%`);
   }
+  // A loan's interest is a tenth, rounded up to the $5, never less than $5: a $5 loan pays $5, not 10%.
+  const tenth = { 0.1: 'a tenth' }[G.RULES.interest];
+  assert.ok(tenth, `RULES.interest is ${G.RULES.interest}: the README says a loan's interest is a tenth`);
+  for (const [where, text] of [['How to play', rules], ['README', readme], ['the help', W.SAYS.interest]]) {
+    assert.ok(text.includes(`adds ${tenth}, rounded up to the next $5 (at least $5), each time you pass Payday`), `${where} doesn't say how a loan's interest is reckoned`);
+    assert.doesNotMatch(text, /10% each/, `${where} says a loan costs 10% each Payday`);
+  }
+});
+
+test("a loan's interest at Payday is a tenth, rounded up to the next $5, and never less than $5", () => {
+  for (const [debt, interest] of [[5, 5], [40, 5], [55, 10], [260, 30], [300, 30], [1234, 125]]) {
+    const s = G.newGame({ seats: seats(), seed: 3 });
+    s.players[0].cash = 0; s.players[0].debt = debt; s.players[0].pos = N - 2;
+    const ev = goTo(s, 2);
+    assert.equal(ev.find(e => e.t === 'interest')?.amount, interest, `interest on a $${debt} loan`);
+  }
 });
 
 // Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the

@@ -839,7 +839,7 @@ function askDecision() {
       const sp = SPACES[q.at];
       h = lotFacts(q.at) + '<div class="buttons stick">';
       h += `<button class="primary" data-c="pay">Pay ${who(q.owner)} ${money(q.rent)}</button>`;
-      if (short) h += `<p class="note">You're ${money(short)} short. The bank lends the rest, and adds 10% each time you pass Payday. Money coming in pays it off first.</p>`;
+      if (short) h += `<p class="note">You're ${money(short)} short. The bank lends the rest, and ${W.SAYS.interest}. Money coming in pays it off first.</p>`;
       if (q.buyout != null) {
         const can = pl.cash >= q.buyout;
         h += `<button class="secondary" data-c="buyout" ${can ? '' : 'disabled'}>Make ${who(q.owner)} sell it to you: ${money(q.buyout)}</button>

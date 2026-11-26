@@ -27,6 +27,8 @@ export const SAYS = {
   street: `each lot with a building on it adds ${pct(R.street)} to the rent of the other lots there, whoever owns them`,
   tax: `${money(R.taxPerLevel)} for every building level you own, and never less than ${money(R.taxMin)}, into the kitty`,
   hall: `its land goes up by ${share(R.hall)} of its first price`,
+  // game.js's payday: the interest is a tenth of the loan rounded up to the $5, and never less than $5
+  interest: `adds ${share(R.interest)}, rounded up to the next $5 (at least $5), each time you pass Payday`,
   depots: `rent is ${money(R.depotRent[1])}, or ${money(R.depotRent[2])} when one player owns both`,
 };
 const count = n => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
@@ -122,6 +124,6 @@ export function rulesHtml() {
     </ul>
     <h3>Running short</h3>
     <ul>
-      <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and adds 10% each time you pass Payday. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
+      <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and ${SAYS.interest}. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
     </ul></div>`;
 }
