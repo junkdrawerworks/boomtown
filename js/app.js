@@ -54,8 +54,7 @@ function showTitle() {
   closeSheet();
   $('app').hidden = true;
   $('title').hidden = false;
-  const saved = store.get(KEY, null);
-  $('resumeBtn').hidden = !(saved && saved.v === 1 && saved.phase !== 'over');
+  $('resumeBtn').hidden = !unfinished();
   drawSeats();
   drawLengths();
   document.title = 'Boomtown';
@@ -116,9 +115,16 @@ $('startBtn').addEventListener('click', () => {
   startGame(G.newGame({ seats, rounds: G.ROUNDS[prefs.len][seats.length] }));
 });
 
-$('resumeBtn').addEventListener('click', () => {
+// The game to carry on: the saved one, or, where the browser won't let the page keep anything (a private window, a
+// sandboxed frame), the one left from the menu, which is still in memory.
+function unfinished() {
   const saved = store.get(KEY, null);
-  if (saved) startGame(saved, true);
+  if (saved && saved.v === 1 && saved.phase !== 'over') return saved;
+  return s && s.phase !== 'over' ? s : null;
+}
+$('resumeBtn').addEventListener('click', () => {
+  const game = unfinished();
+  if (game) startGame(game, true);
 });
 $('rulesBtn').addEventListener('click', showRules);
 $('recordsBtn').addEventListener('click', showRecords);

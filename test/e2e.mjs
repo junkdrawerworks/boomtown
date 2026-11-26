@@ -310,6 +310,38 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
   assert.equal(await page.$$eval('#actions .since', e => e.length), 0, 'what happened since your turn stays after you roll');
 }
 
+// On a desktop, 1280 x 800: the title fits, and the board is square, whole on screen, with the players beside it.
+// Here the browser won't let the page keep anything (a private window, a sandboxed frame): a game left from the menu
+// can still be carried on, since it is still in memory.
+{
+  const desk = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const dp = await desk.newPage();
+  dp.on('pageerror', e => problems.push(e.message));
+  await dp.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError'); } }));
+  await dp.goto(base);
+  await dp.evaluate(() => document.fonts.ready);
+  const card = await dp.$eval('.title-card', el => el.getBoundingClientRect().toJSON());
+  assert.ok(card.width <= 480 && card.left > 300, 'the title card is not centred on a desktop');
+  assert.equal(await dp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the title scrolls sideways on a desktop');
+  await dp.click('#startBtn');
+  await dp.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  const board = await dp.$eval('.board-wrap', el => el.getBoundingClientRect().toJSON());
+  const side = await dp.$eval('.side', el => el.getBoundingClientRect().toJSON());
+  assert.ok(Math.abs(board.width - board.height) < 2, 'the board is not square on a desktop');
+  assert.ok(board.bottom <= 800 && board.top >= 0, 'the board does not fit a 1280 x 800 screen');
+  assert.ok(side.left >= board.right && side.top < board.top + 40, 'the players are not beside the board on a desktop');
+  assert.equal(new Set(await dp.$$eval('.chip', cs => cs.map(c => Math.round(c.getBoundingClientRect().left)))).size, 1, 'the players are not in one column');
+  assert.equal(await dp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the game scrolls sideways on a desktop');
+  const round = await dp.textContent('#round');
+  await dp.click('#menuBtn');
+  await dp.click('#sheet [data-a="leave"]');
+  assert.equal(await dp.isVisible('#resumeBtn'), true, 'Carry on is not offered after leaving, with no storage');
+  await dp.click('#resumeBtn');
+  await dp.waitForSelector('#actions button:has-text("Roll the dice")');
+  assert.equal(await dp.textContent('#round'), round, 'carrying on did not go back to the same game');
+  await desk.close();
+}
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });
