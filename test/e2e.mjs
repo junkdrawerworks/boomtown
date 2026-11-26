@@ -789,6 +789,38 @@ await page.click('#sheet [data-close]');
   await page.click('#sheet [data-close]');
 }
 
+// Founders' Day's tune: a fanfare when a person wins, up to a high C, and a gentler one, falling and soft, when one of
+// the townsfolk does. Heard here through a stand-in for the browser's audio that notes each tone's pitch.
+{
+  await page.evaluate(() => {
+    window.tones = [];
+    const node = extra => ({ connect: x => x, ...extra });
+    window.AudioContext = class {
+      constructor() { this.currentTime = 0; this.state = 'running'; this.sampleRate = 8000; this.destination = {}; }
+      resume() {}
+      createOscillator() { return node({ frequency: { setValueAtTime: f => window.tones.push(f), exponentialRampToValueAtTime() {} }, start() {}, stop() {} }); }
+      createGain() { return node({ gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } }); }
+      createBuffer(c, n) { return { getChannelData: () => new Float32Array(n) }; }
+      createBufferSource() { return node({ start() {} }); }
+      createBiquadFilter() { return node({ frequency: {}, Q: {} }); }
+    };
+  });
+  const sound = async () => { await page.click('#menuBtn'); await page.click('#sheet [data-a="sound"]'); await page.click('#sheet [data-a="back"]'); };
+  await sound(); // on
+  const tune = async winner => {
+    await scene(`s.phase = "over"; s.players[${winner}].cash = 99999;`);
+    await page.evaluate(() => { window.tones = []; });
+    await page.waitForSelector('#sheet .standings li');
+    await page.waitForTimeout(200);
+    const heard = await page.evaluate(() => window.tones);
+    await page.click('#sheet [data-close]');
+    return heard;
+  };
+  assert.deepEqual(await tune(0), [523, 659, 784, 1047], 'a person winning does not get the fanfare');
+  assert.deepEqual(await tune(2), [659, 587, 523, 392, 523], 'one of the townsfolk winning does not get the gentler tune');
+  await sound(); // off again
+}
+
 // Founders' Day closed any way, by Escape, a tap outside it or its ✕, leaves its headline and See the results on the
 // board, which opens it again. A player with a loan is shown owing it, as on their card, never with cash below nothing.
 for (const how of ['Escape', 'scrim', '✕']) {

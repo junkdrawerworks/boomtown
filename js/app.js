@@ -1135,9 +1135,9 @@ function showRecords() {
 }
 
 // ---------- Founders' Day ----------
-// The tune, then the special edition.
+// The tune, then the special edition: a fanfare when a person has won, something gentler when one of the townsfolk has.
 function celebrate() {
-  sfx.end();
+  if (s.players[G.standings(s)[0].p].kind === 'human') sfx.end(); else sfx.gentle();
   finish();
 }
 function finish() {

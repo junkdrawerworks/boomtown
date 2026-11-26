@@ -49,5 +49,6 @@ export const sfx = {
   thud() { tone(96, 0, 0.5, { vol: 0.4, slide: 0.45 }); noise(0, 0.22, { vol: 0.45, freq: 150, q: 0.8 }); },
   stamp() { noise(0, 0.08, { vol: 0.45, freq: 900, q: 1.5 }); tone(180, 0, 0.1, { vol: 0.1 }); },
   paper() { noise(0, 0.25, { vol: 0.18, freq: 3500, q: 0.7 }); },
+  gentle() { [659, 587, 523, 392, 523].forEach((f, k) => tone(f, k * 0.24, k === 4 ? 0.9 : 0.5, { vol: 0.06 })); },
   end() { [523, 659, 784, 1047].forEach((f, k) => tone(f, k * 0.14, 0.35, { type: 'triangle', vol: 0.09 })); },
 };
