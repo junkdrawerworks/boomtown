@@ -142,7 +142,7 @@ assert.ok((await page.textContent('#log')).includes('Mabel rolled'), 'the log sa
 // Tapping a space tells you about it.
 await page.click('#board .cell[data-i="17"]');
 assert.equal(await sheetOpen(), true);
-assert.match(await page.textContent('#sheet h2'), /Main Street/);
+assert.match(await page.textContent('#sheet h2'), /High Street Corner/);
 await page.click('#sheet [data-close]');
 
 // Leaving and coming back carries on where it was.
@@ -233,7 +233,7 @@ await scene('s.players[0].pos = 17;');
   const box = await page.$eval('#board .tokens', g => { const r = [...g.children].at(-1).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   await page.mouse.click(box.x, box.y);
   assert.equal(await sheetOpen(), true, 'a tap on a piece opens nothing');
-  assert.match(await page.textContent('#sheet h2'), /Main Street/);
+  assert.match(await page.textContent('#sheet h2'), /High Street Corner/);
   await page.click('#sheet [data-close]');
 }
 

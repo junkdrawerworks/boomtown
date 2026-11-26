@@ -56,7 +56,7 @@ test('Payday: pay for passing, a bonus for landing, a detour back', () => {
   const s = G.newGame({ seats: seats(), seed: 3 });
   s.players[0].pos = 25; s.players[0].detours = 0;
   goTo(s, 2);
-  assert.equal(s.players[0].cash, 1000 + G.RULES.salary - 0); // lands on Mill Row, for sale: nothing paid yet
+  assert.equal(s.players[0].cash, 1000 + G.RULES.salary - 0); // lands on Millrace Yard, for sale: nothing paid yet
   assert.equal(s.players[0].detours, 1);
   const t = G.newGame({ seats: seats(), seed: 3 });
   t.players[0].pos = 22;
@@ -147,7 +147,7 @@ test('building: a block needs the whole district; every level lifts the street',
 
 test('net worth counts cash, land and buildings, less loans', () => {
   const s = G.newGame({ seats: seats(), seed: 8 });
-  const lot = at('Hilltop');
+  const lot = at('Summit Terrace');
   s.owner[lot] = 0; s.level[lot] = 2; s.players[0].debt = 30; s.players[0].cash = 0;
   assert.equal(G.netWorth(s, 0), G.landValue(s, lot) + 2 * G.buildCost(lot) - 30);
 });
@@ -322,7 +322,7 @@ function botGame(bot = 'rusty', { round = 10, rounds = 20, players = 4 } = {}) {
 test('a townsperson sells a building to clear only a big loan, and never in the last three rounds', () => {
   const sells = (round, debt) => {
     const s = botGame('rusty', { round });
-    const lot = at('Hilltop');
+    const lot = at('Summit Terrace');
     s.owner[lot] = 0; s.level[lot] = 2;
     s.players[0].cash = 0; s.players[0].debt = debt; s.phase = 'manage';
     return botStep(s).some(e => e.t === 'sell');
@@ -393,7 +393,7 @@ test("the move a townsperson picks never counts a buy or a forced sale they'd th
   // Mabel keeps a $300 cushion: with $200 to spare after the price she passes, so the move there scores nothing for it.
   const offer = spare => {
     const s = botGame('mabel');
-    const lot = at('Hilltop');
+    const lot = at('Summit Terrace');
     s.players[0].cash = G.landValue(s, lot) + spare;
     s.players[0].pos = (lot - 5 + N) % N;
     const score = scoreSpace(s, lot, 5);
@@ -419,8 +419,8 @@ test("the move a townsperson picks never counts a buy or a forced sale they'd th
 
 test("at City Hall a townsperson rezones where they have the most riding on it, rivals' land counted against", () => {
   const s = botGame('mabel');
-  s.owner[at('Hilltop')] = 0; s.owner[at('Lookout Point')] = 1; s.owner[at('Belvedere')] = 2;
-  s.owner[at('Riverside')] = 0;
+  s.owner[at('Summit Terrace')] = 0; s.owner[at('Lookout Point')] = 1; s.owner[at('Belvedere')] = 2;
+  s.owner[at('The Towpath')] = 0;
   s.pending = { kind: 'hall' }; s.phase = 'decide';
   assert.equal(chooseDecision(s), 'river', "Hilltop would lift $500 of rivals' land with Mabel's $240");
   // Owning nothing, they lift a district nobody owns rather than a rival's.
