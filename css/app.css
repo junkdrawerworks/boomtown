@@ -80,6 +80,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .kbd .ink { stroke: var(--ink); stroke-width: 11; }
 #board .kbd .gold { stroke: var(--gold); stroke-width: 6; }
 #board .cell.pop { animation: pop .55s cubic-bezier(.3, 1.6, .5, 1); }
+#board .cell.pop .bg { fill: url(#paper); }
 @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.09); } 100% { transform: scale(1); } }
 #board .float { font-size: 38px; paint-order: stroke; stroke: var(--paper); stroke-width: 7px; stroke-linejoin: round; }
 #board .tok { transition: none; filter: drop-shadow(0 3px 2px #0005); }

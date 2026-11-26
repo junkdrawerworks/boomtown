@@ -673,6 +673,20 @@ assert.ok((await page.textContent('#log')).includes('Rusty paid the rent rather 
 assert.match(await page.textContent('#actions .since'), /^Since your turn: Rusty paid you \$[\d,]+\./);
 assert.doesNotMatch(await page.textContent('#actions .since'), /rather|for sale/, 'what the townsfolk passed up is in what happened since your turn');
 
+// A lot bought gives its space a bounce, lifted over its neighbours and the frame on paper, so its lines don't sit
+// beside theirs; then it goes back in its place, in order for the keyboard.
+await scene(`const i = 18;
+  s.owner[i] = -1; s.level[i] = 0; s.players[0].cash = 2000; s.players[0].pos = i; s.dice = [1, 2]; s.phase = 'decide';
+  s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };`);
+await page.waitForSelector('#sheet [data-c="buy"]');
+await page.click('#sheet [data-c="buy"]');
+await page.waitForSelector('#board .cell.pop');
+assert.deepEqual(await page.$eval('#board .cell.pop', g => [g.dataset.i, !!(document.querySelector('#board .frame').compareDocumentPosition(g) & Node.DOCUMENT_POSITION_FOLLOWING), getComputedStyle(g.querySelector('.bg')).fill.startsWith('url(')]),
+  ['18', true, true], 'the space bouncing is drawn under the frame or its neighbours, or without paper');
+await page.waitForFunction(() => !document.querySelector('#board .cell.pop'));
+assert.equal(await page.$$eval('#board .cells > .cell', cs => cs.length === 28 && cs.every((c, k) => +c.dataset.i === k)), true, 'the spaces are out of order after a bounce');
+if (await sheetOpen()) await answer();
+
 // On a desktop, 1280 x 800: the title fits, and the board is square, whole on screen, with the players beside it.
 // Here the browser won't let the page keep anything (a private window, a sandboxed frame): a game left from the menu
 // can still be carried on, since it is still in memory.

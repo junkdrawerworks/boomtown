@@ -286,13 +286,25 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       .finished.then(() => t.remove(), () => t.remove());
   };
 
-  // A building going up, or a lot changing hands: give the cell a little bounce.
+  // A building going up, or a lot changing hands: give the cell a little bounce. It lifts like a card off the board:
+  // drawn over the other spaces and the frame, on paper (see .cell.pop in the css), so its lines don't sit beside
+  // theirs. Then it goes back in its place, which keeps the spaces in order for the keyboard.
+  const popping = new Set();
   view.pop = i => {
-    const g = cells[i];
+    const g = cells[i], had = document.activeElement === g;
+    clearTimeout(g._pop);
     g.classList.remove('pop');
+    if (!popping.has(g)) { popping.add(g); svg.insertBefore(g, marksG); }
+    if (had) g.focus({ preventScroll: true });
     void g.getBBox();
     g.classList.add('pop');
-    setTimeout(() => g.classList.remove('pop'), 600);
+    g._pop = setTimeout(() => {
+      g.classList.remove('pop');
+      popping.delete(g);
+      const has = document.activeElement === g;
+      cellsG.insertBefore(g, cells.slice(i + 1).find(c => !popping.has(c)) ?? null);
+      if (has) g.focus({ preventScroll: true });
+    }, 600);
   };
 
   view.reset = () => { view.shown = []; view.tokenEls.forEach(el => el.remove()); view.tokenEls = []; };
