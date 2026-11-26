@@ -432,14 +432,16 @@ function drawPlayers(s) {
     const long = (!pl.debt && money(worth).length > 6 ? ' long' : '') + (money(pl.cash).length > 6 ? ' rich' : '');
     return {
       cls: `chip${now ? ' now' : ''}${long}`,
-      label: `${pl.name}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}`,
+      // A card is a button (it opens the player's sheet), so the label carries all it says, where they stand included.
+      label: `${pl.name}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}. ${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.`,
       inner: `<span class="tk">${art.tokenSvg(pl.token, 30)}</span><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span>
       ${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth"><span class="lbl">worth </span>${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
       <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>`,
     };
   });
   // Each card is changed in place, not replaced, so a card lighting up (see flashCard) carries on while its cash changes.
-  if (el.children.length !== cards.length) el.innerHTML = cards.map(() => '<div role="group"></div>').join('');
+  // A tap on a card (or Enter on it) opens that player's sheet: see showPlayer.
+  if (el.children.length !== cards.length) el.innerHTML = cards.map(() => '<div role="button" tabindex="0"></div>').join('');
   cards.forEach((c, p) => {
     const card = el.children[p], h = c.cls + c.label + c.inner;
     if (card._h === h) return;
@@ -450,6 +452,15 @@ function drawPlayers(s) {
     card.innerHTML = c.inner;
   });
 }
+
+$('players').addEventListener('click', e => {
+  const c = e.target.closest('.chip');
+  if (c) showPlayer([...$('players').children].indexOf(c));
+});
+$('players').addEventListener('keydown', e => {
+  const c = e.target.closest('.chip');
+  if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showPlayer([...$('players').children].indexOf(c)); }
+});
 
 // A huge rent: $250 or more, and a quarter or more of what the payer was worth before paying it. About three in a
 // four-player game of 20 rounds, under one in a two-player game.
@@ -913,7 +924,7 @@ function showSpace(i) {
 function showLots(at = null) {
   const p = s.turn;
   const mine = OWNABLE.filter(i => s.owner[i] === p);
-  const canAct = isHumanTurn();
+  const canAct = isHumanTurn() && (s.phase === 'manage' || s.phase === 'roll'); // selling waits till the move is done
   let h = `<h2 id="sheetTitle">${Whose(p)} lots</h2>`;
   h += s.phase === 'manage' ? '<p class="note">Build as much as you can afford. A block needs the whole district.</p>' : '<p class="note">You can build after you move. Selling a building back gets half of what it cost.</p>';
   h += '<div class="pick-list">';
@@ -966,6 +977,33 @@ function showLots(at = null) {
       closeSheet(); await doSell(i); showLots(at);
     });
   });
+}
+
+// A player's sheet, from a tap on their card: their piece and name, a townsperson's line, their cash, loan and detours,
+// and their lots with what each rents for, so a rival's holdings can be read without scanning the board. The person
+// whose turn it is gets Your lots instead, to build and sell. Like a space's sheet, it can be opened while the
+// townsfolk play, and holds them up until it's closed; mid-move it shows the game as the screen does.
+function showPlayer(p) {
+  if (!s || p < 0 || (busy && isHumanTurn())) return;
+  if (isHumanTurn() && p === s.turn) { showLots(); return; }
+  const v = shown || s, pl = v.players[p], bot = BOTS[pl.bot];
+  const mine = OWNABLE.filter(i => v.owner[i] === p);
+  let h = `<div class="kicker">${p === v.turn && v.phase !== 'over' ? 'Playing now' : `On ${place(pl.pos)}`}</div>
+    <h2 id="sheetTitle" class="who-head">${art.tokenSvg(pl.token, 34)}<span>${esc(pl.name)}</span></h2>${bot ? `<p class="line">${esc(bot.line)}</p>` : ''}
+    <table class="facts"><tr><td>Cash</td><td>${money(pl.cash)}</td></tr>${pl.debt ? `<tr><td>Owes the bank</td><td>${money(pl.debt)}</td></tr>` : ''}
+    <tr><td>Detours</td><td>${pl.detours ? `<span aria-hidden="true">${'◆'.repeat(pl.detours)} </span>${pl.detours}` : 'None'}</td></tr>
+    <tr><td>Worth</td><td>${money(G.netWorth(v, p))}</td></tr></table>
+    <h3>${mine.length ? `${mine.length} lot${mine.length === 1 ? '' : 's'}` : 'No lots yet'}</h3>`;
+  if (mine.length) {
+    h += '<div class="pick-list">';
+    for (const i of mine) {
+      const sp = SPACES[i], price = G.buyoutPrice(v, i);
+      const what = sp.type === 'depot' ? 'Depot' : G.LEVEL_NAMES[v.level[i]];
+      h += `<div class="pick" style="cursor:default">${sp.district ? swatch(sp.district) : '<span class="swatch" style="background:#7d6b5a"></span>'}<span>${esc(sp.name)}<small>${what}, rent ${money(G.rentFor(v, i))}</small>${price != null ? `<small class="warn">Can be made to sell for ${money(price)}</small>` : ''}</span><span></span></div>`;
+    }
+    h += '</div>';
+  }
+  openSheet(h);
 }
 
 // Ask the person whose turn it is to answer the game's question. On a phone the sheet covers the player cards, so each

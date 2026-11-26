@@ -178,5 +178,5 @@ export function rulesHtml() {
     <ul>
       <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and ${SAYS.interest}. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
     </ul>
-    <p class="note">While the townsfolk play, a tap on a space shows it, and a tap on the middle of the board hurries them along.</p></div>`;
+    <p class="note">A tap on a space shows it, and a tap on a player's card shows what they own, even while the townsfolk play. A tap on the middle of the board hurries the townsfolk along.</p></div>`;
 }

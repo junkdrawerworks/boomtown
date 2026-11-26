@@ -732,6 +732,47 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');
 }
 
+// A tap on a player's card opens their sheet: piece and name, a townsperson's line, cash, detours, worth, and each of
+// their lots with its rent. Your own card on your turn opens Your lots, with no selling while a move is to be made. It
+// works during the townsfolk's turns too, and holds them up like a space's sheet. Enter on a card opens it as well.
+await scene();
+{
+  const facts = () => page.$$eval('#sheet .facts tr', rs => rs.map(r => [...r.cells].map(c => c.textContent)));
+  await page.click('#players .chip >> nth=1');
+  const rusty = await page.evaluate(() => { const { state: s, G } = window.boomtown; const lots = Object.keys(s.owner).filter(i => s.owner[i] === 1).map(Number); return { cash: s.players[1].cash, worth: G.netWorth(s, 1), lots: lots.map(i => G.rentFor(s, i)) }; });
+  assert.equal((await page.textContent('#sheetTitle')).trim(), 'Rusty');
+  assert.equal(await page.textContent('#sheet .line'), 'Buys anything with a fence round it.');
+  const usd = n => '$' + n.toLocaleString('en-US');
+  assert.deepEqual((await facts()).filter(r => r[0] !== 'Detours'), [['Cash', usd(rusty.cash)], ['Worth', usd(rusty.worth)]], "Rusty's sheet doesn't say Rusty's cash and worth");
+  assert.deepEqual(await page.$$eval('#sheet .pick small:not(.warn)', ss => ss.map(e => e.textContent.replace(/.*rent /, ''))), rusty.lots.map(usd), "Rusty's sheet doesn't list Rusty's lots with their rents");
+  await page.click('#sheet [data-close]');
+  await page.click('#players .chip >> nth=0');
+  assert.equal(await page.textContent('#sheetTitle'), 'Your lots', 'your own card on your turn does not open Your lots');
+  await page.click('#sheet [data-close]');
+  await page.click('#actions button:has-text("Roll the dice")');
+  await page.waitForSelector('.move-btn');
+  await page.waitForFunction(() => !window.boomtown.busy);
+  await page.click('#players .chip >> nth=0');
+  assert.equal(await page.$$eval('#sheet [data-sell]', b => b.length), 0, 'Your lots offers to sell a building while a move is to be made');
+  await page.click('#sheet [data-close]');
+  await page.click('.move-btn >> nth=0');
+  await page.waitForFunction(() => !window.boomtown.busy && window.boomtown.state.phase !== 'move');
+  await answer();
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForFunction(() => window.boomtown.busy === true && window.boomtown.state.turn !== 0, null, { timeout: 10000 });
+  await page.focus('#players .chip >> nth=3');
+  await page.keyboard.press('Enter');
+  assert.equal((await page.textContent('#sheetTitle')).trim(), 'Dot', "Enter on Dot's card while the townsfolk play doesn't open Dot's sheet");
+  assert.equal(await page.textContent('#sheet .line'), 'Wants whole streets, and will force a sale to get one.');
+  const snap = () => page.evaluate(() => { const s = window.boomtown.state; return JSON.stringify([s.turn, s.phase, s.players.map(p => p.pos), s.owner, s.level]); });
+  await page.waitForTimeout(1200);
+  const held = await snap();
+  await page.waitForTimeout(1500);
+  assert.equal(await snap(), held, "the townsfolk play on behind a player's sheet");
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+}
+
 // A tap on the middle of the board during a townsperson's turn plays the rest of that turn at once, and the next one
 // at the usual pace: here Rusty is hurried and Mabel isn't. Hurry Rusty along, under the line, says so and does the same.
 await scene("s.phase = 'manage'; s.dice = [1, 2];");
@@ -1194,8 +1235,9 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   const onBoard = n => { for (let x = n; x; x = byId.get(x.parentId)) if (name(x) === 'The board') return true; return false; };
   const stray = nodes.filter(n => !n.ignored && n.role?.value === 'StaticText' && /^\d+$/.test(name(n)) && onBoard(n));
   assert.deepEqual(stray.map(name), [], 'numbers with no words are read out on the board');
-  const chips = nodes.filter(n => !n.ignored && n.role?.value === 'group' && /cash/.test(name(n)));
-  assert.equal(chips.length, s.names.length, "the players' cards are not named groups");
+  const chips = nodes.filter(n => !n.ignored && n.role?.value === 'button' && /cash/.test(name(n)));
+  assert.equal(chips.length, s.names.length, "the players' cards are not named buttons");
+  assert.equal(chips.filter(n => / Playing now\. On [A-Z]/.test(name(n))).length, 1, "the card whose turn it is doesn't say so to a screen reader");
   assert.match(await page.textContent('.chip.now .vh'), /^Playing now\. On /, 'the card whose turn it is does not say so');
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }

@@ -203,7 +203,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   grid-template-areas: "tk nm nm" "cash cash dt" "sub sub sub";
   box-shadow: 0 3px 0 #0005; min-width: 0; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+.chip { cursor: pointer; touch-action: manipulation; } /* a tap opens the player's sheet */
 .chip.now { outline: 3px solid var(--gold); outline-offset: 1px; }
+.chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--gold); }
+.tapped .chip:focus-visible { outline: none; box-shadow: 0 3px 0 #0005; }
+.tapped .chip.now:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
 .chip.flash { animation: flash .7s ease-out; }
 @keyframes flash { 20% { background: #f6d77a; box-shadow: 0 0 0 4px var(--gold), 0 3px 0 #0005; } }
 .chip.shake { animation: shake .5s ease-in-out; }
@@ -322,6 +326,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sheet .buttons .row > * { flex: 1; }
 .sheet .note { font-size: 13px; color: var(--muted); }
 .sheet .close { position: absolute; z-index: 2; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--ink); background: var(--card); font-size: 18px; line-height: 1; }
+/* A player's sheet: their piece beside their name, and a townsperson's line under it. */
+.sheet .who-head { display: flex; align-items: center; gap: 10px; padding-right: 44px; }
+.sheet .who-head svg { flex: none; }
+.sheet .line { color: var(--muted); font-style: italic; margin: 2px 0 10px; }
 .facts { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .facts td { padding: 4px 0; border-bottom: 1px solid var(--line); }
 .facts td:last-child { text-align: right; font-weight: 700; }
