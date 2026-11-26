@@ -232,6 +232,12 @@ function startGame(game, resumed = false, again = false) {
   gen++;
   closeSheet(); // Play again starts from Founders' Day's sheet
   unused = null;
+  // Nothing from the last game carries into this one: a hurry (keyed on round and seat, which come round again), the
+  // copy a move was being shown on, or a headline or banner still up.
+  hurryAt = null;
+  shown = null;
+  clearTimeout(toastTimer); $('toast').hidden = true;
+  clearTimeout(bannerTimer); $('banner').hidden = true;
   $('title').hidden = true;
   $('app').hidden = false;
   view.reset();
