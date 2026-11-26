@@ -297,6 +297,28 @@ assert.equal(await page.textContent('#round'), 'Last round', 'the header does no
 assert.equal(await page.$eval('#round', el => el.classList.contains('last')), true, 'the last round is not marked out');
 assert.match(await page.textContent('#say'), /Founders' Day after this round\./, "the last round's first turn doesn't say Founders' Day comes after it");
 
+// Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
+await scene('', { round: 4 });
+await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));
+{
+  const savedRound = () => page.evaluate(() => JSON.parse(localStorage.getItem('boomtown.game')).round);
+  await page.click('#menuBtn');
+  await page.click('#sheet [data-a="leave"]');
+  assert.match(await page.textContent('#resumeBtn'), /^Carry on Round 4 of 20, with Rusty, Mabel and Dot$/, 'Carry on does not say which game it carries on');
+  await page.click('#startBtn');
+  assert.equal(await sheetOpen(), true, 'Break ground starts over a game in progress without asking');
+  assert.match(await page.textContent('#sheet'), /Your game in round 4 of 20 will be lost\./);
+  assert.equal(await savedRound(), 4, 'Break ground replaced the saved game before it was answered');
+  await page.click('#sheet [data-a="keep"]');
+  assert.equal(await sheetOpen(), false, 'Keep that game leaves the question open');
+  assert.equal(await page.isVisible('#title'), true, 'Keep that game leaves the title screen');
+  assert.equal(await savedRound(), 4, 'Keep that game did not keep the game');
+  await page.click('#startBtn');
+  await page.click('#sheet [data-a="new"]');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")');
+  assert.equal(await savedRound(), 1, 'Start the new game did not start one');
+}
+
 // What the townsfolk did to you while you waited is waiting for you when your turn comes round, even after a reload,
 // and goes once you roll: here Dot forces a sale of one of your lots, and part of the price pays off your loan.
 await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0 && (s.owner[j] = 0, G.buyoutPrice(s, j) != null));

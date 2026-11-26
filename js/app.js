@@ -54,7 +54,9 @@ function showTitle() {
   closeSheet();
   $('app').hidden = true;
   $('title').hidden = false;
-  $('resumeBtn').hidden = !unfinished();
+  const game = unfinished();
+  $('resumeBtn').hidden = !game;
+  $('resumeWhat').textContent = game ? savedLine(game) : '';
   drawSeats();
   drawLengths();
   document.title = 'Boomtown';
@@ -104,7 +106,18 @@ $('lengths').addEventListener('click', e => {
   drawLengths();
 });
 
+// Break ground with a game unfinished asks first: starting saves over it.
 $('startBtn').addEventListener('click', () => {
+  const game = unfinished();
+  if (!game) { breakGround(); return; }
+  const body = openSheet(`<h2 id="sheetTitle">Start a new game?</h2>
+    <p>Your game in round ${game.round} of ${game.rounds} will be lost.</p>
+    <div class="buttons"><button class="primary" data-a="new">Start the new game</button><button class="secondary" data-a="keep">Keep that game</button></div>`);
+  body.querySelector('[data-a="new"]').addEventListener('click', breakGround);
+  body.querySelector('[data-a="keep"]').addEventListener('click', () => closeSheet());
+  body.querySelector('[data-a="keep"]').focus(); // Enter or Space on the question keeps the game
+});
+function breakGround() {
   const seats = prefs.seats.map((x, k) => ({ ...x, token: k })).filter(x => x.who !== 'none').map(x => {
     if (x.who === 'you') return { name: x.name || `Player ${x.token + 1}`, kind: 'human', token: x.token };
     return { name: BOTS[x.who].name, kind: 'bot', bot: x.who, token: x.token };
@@ -113,7 +126,7 @@ $('startBtn').addEventListener('click', () => {
   const seen = {};
   for (const x of seats) { seen[x.name] = (seen[x.name] || 0) + 1; if (seen[x.name] > 1) x.name += ` ${seen[x.name]}`; }
   startGame(G.newGame({ seats, rounds: G.ROUNDS[prefs.len][seats.length] }));
-});
+}
 
 // The game to carry on: the saved one, or, where the browser won't let the page keep anything (a private window, a
 // sandboxed frame), the one left from the menu, which is still in memory.
@@ -121,6 +134,13 @@ function unfinished() {
   const saved = store.get(KEY, null);
   if (saved && saved.v === 1 && saved.phase !== 'over') return saved;
   return s && s.phase !== 'over' ? s : null;
+}
+// What Carry on carries on: 'Round 4 of 20, with Rusty, Mabel and Dot'.
+function savedLine(game) {
+  const and = l => (l.length > 1 ? `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}` : l[0] || '');
+  const solo = game.players.filter(p => p.kind === 'human').length === 1 && game.players.some(p => p.name === 'You');
+  const names = game.players.map(p => p.name).filter(n => !solo || n !== 'You');
+  return `Round ${game.round} of ${game.rounds}, ${solo ? 'with ' : ''}${and(names)}`;
 }
 $('resumeBtn').addEventListener('click', () => {
   const game = unfinished();

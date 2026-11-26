@@ -245,6 +245,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .title-card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; color: var(--muted); }
 .title-card > .primary { width: 100%; margin-top: 18px; }
 #resumeBtn { margin-top: 0; margin-bottom: 4px; }
+#resumeBtn .what { display: block; font-size: 13px; font-weight: 600; opacity: .9; }
+#resumeBtn .what:empty { display: none; }
 .seats { display: flex; flex-direction: column; gap: 6px; }
 .seat { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 8px; align-items: center; }
 .seat select, .seat input {
