@@ -323,3 +323,16 @@ test("the move a townsperson picks never counts a buy or a forced sale they'd th
   assert.deepEqual(sale(20), [false, 'pay']);
   assert.deepEqual(sale(400), [true, 'buyout']);
 });
+
+test("at City Hall a townsperson rezones where they have the most riding on it, rivals' land counted against", () => {
+  const s = botGame('mabel');
+  s.owner[at('Hilltop')] = 0; s.owner[at('Lookout Point')] = 1; s.owner[at('Belvedere')] = 2;
+  s.owner[at('Riverside')] = 0;
+  s.pending = { kind: 'hall' }; s.phase = 'decide';
+  assert.equal(chooseDecision(s), 'river', "Hilltop would lift $500 of rivals' land with Mabel's $240");
+  // Owning nothing, they lift a district nobody owns rather than a rival's.
+  const t = botGame('mabel');
+  for (const i of LOTS_IN.mill) t.owner[i] = 1;
+  t.pending = { kind: 'hall' }; t.phase = 'decide';
+  assert.notEqual(chooseDecision(t), 'mill');
+});

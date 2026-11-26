@@ -142,10 +142,12 @@ export function chooseDecision(s) {
     case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 2)) ?? 'pass';
     case 'yard': return bestBuild(s, 0.5, true) ?? 'pass';
     case 'hall': {
-      // The district where this bot has the most riding on it.
-      let best = 'mill', bestV = -1;
+      // The district where this bot has the most riding on it: its own land there, less what the rise hands its
+      // rivals, shared out among them.
+      const rivals = Math.max(1, s.players.length - 1);
+      let best = 'mill', bestV = -Infinity;
       for (const [d, lots] of Object.entries(LOTS_IN)) {
-        const v = lots.filter(i => s.owner[i] === p).reduce((t, i) => t + landValue(s, i) + 1, 0);
+        const v = lots.reduce((t, i) => t + (s.owner[i] === p ? 1 : s.owner[i] >= 0 ? -1 / rivals : 0) * landValue(s, i), 0);
         if (v > bestV) { bestV = v; best = d; }
       }
       return best;
