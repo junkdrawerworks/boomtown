@@ -283,6 +283,24 @@ await page.evaluate(() => {
   assert.ok(seen.floats.every(f => f.inside !== false), `money floating off the top row leaves the board: ${JSON.stringify(seen)}`);
 }
 
+// The buy sheet's rents are what the lot will earn once bought: here Mill Row's other two lots have a house each, so
+// the street's bonus counts, as it does in the rent paid.
+await scene(`const lots = B.LOTS_IN.mill; lots.forEach(i => { s.owner[i] = -1; s.level[i] = 0; });
+  s.owner[lots[1]] = 1; s.level[lots[1]] = 1; s.owner[lots[2]] = 2; s.level[lots[2]] = 1;
+  s.players[0].pos = lots[0]; s.phase = 'decide'; s.dice = [1, 1];
+  s.pending = { kind: 'buy', at: lots[0], price: G.landValue(s, lots[0]) };`);
+{
+  if (!await sheetOpen()) await page.click('#actions button:has-text("Decide")');
+  await page.waitForSelector('#sheet [data-c="buy"]');
+  const { shown, real } = await page.evaluate(() => {
+    const s = window.boomtown.state, { G } = window.boomtown, i = s.pending.at;
+    const real = [0, 1, 2, 3].map(lv => G.rentFor({ ...s, owner: { ...s.owner, [i]: 0 }, level: { ...s.level, [i]: lv } }, i, lv));
+    return { shown: [...document.querySelectorAll('#sheet .facts td:last-child')].map(td => td.textContent), real: real.map(n => '$' + n.toLocaleString('en-US')) };
+  });
+  assert.deepEqual(shown, real, "the buy sheet's rents are not what the lot earns once bought");
+  await page.click('#sheet [data-c="pass"]');
+}
+
 await scene();
 await page.click('#board .cell[data-i="17"]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');

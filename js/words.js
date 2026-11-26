@@ -20,16 +20,28 @@ export const agree = (pl, you, they) => (isYou(pl) ? you : they);
 
 export const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
 
+// What lot i would rent for at `level`, with `owner` owning it: a lot for sale reckoned as if bought.
+export function rentAt(s, i, level, owner = s.owner[i]) {
+  return G.rentFor({ ...s, owner: { ...s.owner, [i]: owner }, level: { ...s.level, [i]: level } }, i, level);
+}
+
+// Who a lot for sale is reckoned for: the person whose turn it is, or else the one person at the table, so its rents
+// are what it would earn them, its whole district's bonus included when they own the rest. With nobody to reckon for
+// (the townsfolk's turn in a game of several people), as if bought by someone who owns nothing else, so only the
+// street's bonus counts.
+const buyer = s => {
+  if (G.current(s).kind === 'human') return s.turn;
+  const people = s.players.flatMap((pl, p) => (pl.kind === 'human' ? [p] : []));
+  return people.length === 1 ? people[0] : s.players.length;
+};
+
 export function rentTable(s, i) {
   const sp = SPACES[i], cur = s.level[i];
   if (sp.type === 'depot') {
     return `<table class="facts"><tr><td>Rent with one depot</td><td>${money(G.RULES.depotRent[1])}</td></tr><tr><td>Rent with both</td><td>${money(G.RULES.depotRent[2])}</td></tr></table>`;
   }
-  const o = s.owner[i];
-  const rows = G.LEVEL_NAMES.map((name, lv) => {
-    const rent = o >= 0 ? G.rentFor(s, i, lv) : Math.round(G.landValue(s, i) * G.RULES.rent[lv] / 5) * 5;
-    return `<tr class="${o >= 0 && lv === cur ? 'here' : ''}"><td>Rent, ${name.toLowerCase()}${lv ? ` (+${money(G.buildCost(i))})` : ''}</td><td>${money(rent)}</td></tr>`;
-  }).join('');
+  const o = s.owner[i], to = o >= 0 ? o : buyer(s);
+  const rows = G.LEVEL_NAMES.map((name, lv) => `<tr class="${o >= 0 && lv === cur ? 'here' : ''}"><td>Rent, ${name.toLowerCase()}${lv ? ` (+${money(G.buildCost(i))})` : ''}</td><td>${money(rentAt(s, i, lv, to))}</td></tr>`).join('');
   return `<table class="facts">${rows}</table>`;
 }
 

@@ -227,6 +227,39 @@ test("a lot's sheet talks to You as you: no \"You's house\", no \"You owns\"", (
   assert.match(W.lotFacts(s, DEPOTS[0]), /Your depot\./);
 });
 
+// The rents in a lot's table, as numbers.
+const tableRents = (s, i) => [...W.rentTable(s, i).matchAll(/<td>\$([\d,]+)<\/td>/g)].map(m => +m[1].replace(/,/g, ''));
+
+test("a lot for sale's rent table is what it would earn once bought, street and whole district counted", () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Rusty', kind: 'bot', bot: 'rusty', token: 1 }, { name: 'Dot', kind: 'bot', bot: 'dot', token: 2 }], seed: 5 });
+  const [a, b, c] = LOTS_IN.mill;
+  s.owner[b] = 1; s.level[b] = 1; s.owner[c] = 2; s.level[c] = 1;
+  const bought = (s, p) => [0, 1, 2, 3].map(lv => G.rentFor({ ...s, owner: { ...s.owner, [a]: p }, level: { ...s.level, [a]: lv } }, a, lv));
+  assert.deepEqual(tableRents(s, a), bought(s, 0));
+  assert.ok(tableRents(s, a)[0] > Math.round(G.landValue(s, a) * G.RULES.rent[0] / 5) * 5, "the street's bonus is left out");
+  // The person owns the other two: buying this one makes the whole district theirs.
+  s.owner[b] = 0; s.owner[c] = 0;
+  assert.deepEqual(tableRents(s, a), bought(s, 0));
+  assert.equal(tableRents(s, a)[0], G.rentFor({ ...s, owner: { ...s.owner, [a]: 0 } }, a), 'the whole district is left out');
+  // On a townsperson's turn it's still reckoned for the one person at the table; in a game of several people, for
+  // nobody in particular, so only the street counts.
+  s.turn = 1;
+  assert.deepEqual(tableRents(s, a), bought(s, 0));
+  s.players[2].kind = 'human';
+  assert.deepEqual(tableRents(s, a), bought(s, 3));
+  // A lot nobody owns earns nothing until it's bought.
+  assert.equal(G.rentFor(s, a), 0);
+});
+
+test("an owned lot's rent table is unchanged up to its level", () => {
+  const s = G.newGame({ seats: seats(2), seed: 7 });
+  const [a, b, c] = LOTS_IN.river;
+  s.owner[a] = 0; s.level[a] = 2; s.owner[b] = 1; s.level[b] = 1; s.land.river = 1.3;
+  assert.deepEqual(tableRents(s, a).slice(0, 3), [0, 1, 2].map(lv => G.rentFor(s, a, lv)));
+  s.owner[b] = 0; s.owner[c] = 0;
+  assert.deepEqual(tableRents(s, a).slice(0, 3), [0, 1, 2].map(lv => G.rentFor(s, a, lv)));
+});
+
 test("a block's reason names the lot it's missing, and who has it", () => {
   const s = G.newGame({ seats: seats(), seed: 9 });
   const [a, b, c] = LOTS_IN.mill;
