@@ -120,10 +120,10 @@ export function chooseMove(s) {
 // What a token is worth keeping, by how many are left.
 const DETOUR_VALUE = [Infinity, 70, 45, 30];
 
-// The best lot to buy from a list, or null.
-function bestToBuy(s, list, priceOf) {
+// The best lot to buy from a list, or null. A bargain is taken whenever it can be paid for.
+function bestToBuy(s, list, priceOf, bargain = false) {
   const p = s.turn, pl = current(s), b = me(s);
-  let best = null, bestV = 0;
+  let best = null, bestV = bargain ? -Infinity : 0;
   for (const i of list) {
     const price = priceOf(i);
     if (price > pl.cash) continue;
@@ -139,7 +139,7 @@ export function chooseDecision(s) {
     case 'buy': return wouldBuy(s, q.at, pl.cash, q.price) ? 'buy' : 'pass';
     case 'rent': return wouldForce(s, q.at, pl.cash, q.buyout ?? null) ? 'buyout' : 'pay';
     case 'office': return bestToBuy(s, emptyLots(s), i => landValue(s, i)) ?? 'pass';
-    case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 10) * 5) ?? 'pass'; // half, to the $5, as decide() charges
+    case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 10) * 5, true) ?? 'pass'; // half, to the $5, as decide() charges
     case 'yard': return bestBuild(s, 0.5, true) ?? 'pass';
     case 'hall': {
       // The district where this bot has the most riding on it: its own land there, less what the rise hands its
@@ -156,10 +156,10 @@ export function chooseDecision(s) {
   return 'pass';
 }
 
-// The build with the best rent gained per dollar, if this bot is willing to spend on it.
+// The build with the best rent gained per dollar, if this bot is willing to spend on it. In the final round the
+// cushion is gone (see reserve), and a building is still worth what it cost on Founders' Day and lifts the street.
 function bestBuild(s, discount = 1, cheap = false) {
   const p = s.turn, pl = current(s), b = me(s);
-  if (s.round >= s.rounds) return null; // nobody will pay rent on it
   let best = null, bestV = 0;
   for (const i of OWNABLE) {
     const c = canBuild(s, p, i, discount);

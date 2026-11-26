@@ -337,6 +337,24 @@ test("at City Hall a townsperson rezones where they have the most riding on it, 
   assert.notEqual(chooseDecision(t), 'mill');
 });
 
+test('a townsperson takes the free gains at the end: a final-round build, the Lumberyard, the Estate sale', () => {
+  // In the final round building is worth what it costs, and lifts the street's land, so it's never a loss.
+  const s = botGame('mabel', { round: 20 });
+  for (const i of LOTS_IN.river) s.owner[i] = 0;
+  s.players[0].cash = 500; s.phase = 'manage';
+  assert.ok(botStep(s).some(e => e.t === 'build'), 'builds in the final round');
+  s.pending = { kind: 'yard' }; s.phase = 'decide';
+  assert.equal(typeof chooseDecision(s), 'number', 'takes the Lumberyard in the final round');
+  // The Estate sale: a lot at half its land value is worth taking even short of a cushion.
+  const t = botGame('mabel');
+  t.players[0].cash = 100;
+  for (const i of OWNABLE) if (G.landValue(t, i) > 100) t.owner[i] = 1;
+  t.pending = { kind: 'estate' }; t.phase = 'decide';
+  const pick = chooseDecision(t);
+  assert.equal(typeof pick, 'number');
+  assert.equal(SPACES[pick].type, 'lot');
+});
+
 test("a townsperson reckons the Estate sale's half price to the $5, as the sale charges it", () => {
   // Tannery Lane on $75 of land costs $40, not $38: with $38, Rusty can't buy it.
   const t = botGame('rusty');
