@@ -216,16 +216,28 @@ const scene = async (setup = '', { seed = 11, round = 14 } = {}) => {
   await page.waitForTimeout(300);
 };
 
-// Every player's card keeps the same two rows, whatever the amounts: name and cash, then worth or what they owe.
-await scene('s.players[0].cash = 12345; s.players[2].cash = 0; s.players[2].debt = 1230;');
-for (const width of [390, 375]) {
-  await page.setViewportSize({ width, height: width === 375 ? 667 : 844 });
+// On a phone the players are one row of compact cards that keep the same rows, whatever the amounts: piece and name,
+// cash, then worth or what they owe. That leaves the board the whole width, standing as tall as the screen has room for
+// (taller than a square board by half again on a phone with height to spare), with the newest line of What happened
+// still on screen and no page to scroll.
+await scene('s.players[0].cash = 12345; s.players[2].cash = 0; s.players[2].debt = 1230; for (let k = 1; k <= 8; k++) s.log.push(`Rusty paid Dot $120 rent on Tannery Lane (${k}).`);');
+for (const [width, height] of [[390, 844], [375, 667], [360, 780], [430, 932], [320, 568]]) {
+  await page.setViewportSize({ width, height });
   await page.waitForTimeout(200);
-  const chips = await page.$$eval('.chip', cs => cs.map(c => ({ h: c.offsetHeight, nm: c.querySelector('.nm').getBoundingClientRect().top, cash: c.querySelector('.cash').getBoundingClientRect().top, text: c.textContent.replace(/\s+/g, ' ').trim() })));
+  const chips = await page.$$eval('.chip', cs => cs.map(c => ({ h: c.offsetHeight, top: Math.round(c.getBoundingClientRect().top), text: c.textContent.replace(/\s+/g, ' ').trim() })));
   assert.equal(new Set(chips.map(c => c.h)).size, 1, `player cards differ in height at ${width}px: ${JSON.stringify(chips)}`);
-  for (const c of chips) assert.ok(Math.abs(c.nm - c.cash) < 6, `cash is not beside the name at ${width}px: ${c.text}`);
-  assert.deepEqual(await page.$$eval('.chip .nm, .chip .sub', es => es.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)), [], `card text is cut off at ${width}px`);
+  assert.equal(new Set(chips.map(c => c.top)).size, 1, `the player cards are not in one row at ${width}px: ${JSON.stringify(chips)}`);
+  assert.deepEqual(await page.$$eval('.chip .nm, .chip .sub, .chip .cash', es => es.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)), [], `card text is cut off at ${width}px`);
   assert.match(chips[2].text, /owes \$1,230/, 'a card with a loan says what is owed');
+  const m = await page.evaluate(() => ({ board: document.querySelector('.board-wrap').getBoundingClientRect().toJSON(), units: document.getElementById('board').viewBox.baseVal.height,
+    doc: document.documentElement.scrollHeight, newest: document.querySelector('#log li:first-child').getBoundingClientRect().bottom, log: document.getElementById('log').getBoundingClientRect().bottom }));
+  if (width >= 360) assert.ok(m.board.width >= width - 16, `the board is ${m.board.width} px wide at ${width}x${height}, not the screen's width less its edges`);
+  else assert.ok(m.board.width >= 285, `the board is only ${m.board.width} px wide at ${width}x${height}`);
+  assert.ok(m.units >= 1140 && m.units <= 1400, `the board is ${m.units} units tall at ${width}x${height}`);
+  if (height >= 780) assert.equal(m.units, 1400, `the board doesn't stand as tall as it can at ${width}x${height}`);
+  assert.ok(m.doc <= height, `the page scrolls ${m.doc - height} px at ${width}x${height}`);
+  assert.ok(m.newest <= height, `the newest line of What happened is below the fold at ${width}x${height}`);
+  if (height >= 780) assert.ok(height - m.log < 40, `${Math.round(height - m.log)} px of empty felt under What happened at ${width}x${height}`);
 }
 await page.setViewportSize({ width: 390, height: 844 });
 

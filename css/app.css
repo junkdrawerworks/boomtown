@@ -176,32 +176,46 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* players and the log */
 /* On a short phone the board is narrower than the screen; the players' cards still take the width they need. */
 .side { width: max(var(--bw), min(100%, 480px)); display: flex; flex-direction: column; gap: 8px; }
-.players { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* On a phone (and an upright tablet) the players are one row of compact cards: the piece and name, the cash and
+   detours, then what they're worth or owe. Beside the board on a wide screen, one column of cards, two rows each. */
+.players { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
 .chip {
-  background: var(--card); border: 2.5px solid var(--ink); border-radius: 12px; padding: 6px 8px;
-  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 19px 18px; column-gap: 8px; align-items: center;
+  background: var(--card); border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 5px 5px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: 18px 18px 15px; column-gap: 4px; align-items: center;
+  grid-template-areas: "tk nm nm" "cash cash dt" "sub sub sub";
   box-shadow: 0 3px 0 #0005; min-width: 0; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .chip.now { outline: 3px solid var(--gold); outline-offset: 1px; }
 .chip.flash { animation: flash .7s ease-out; }
 @keyframes flash { 20% { background: #f6d77a; box-shadow: 0 0 0 4px var(--gold), 0 3px 0 #0005; } }
-.chip .tk { grid-row: span 2; display: grid; }
-.chip .r { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.chip .nm { flex: 1; font-weight: 800; font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
-.chip .cash { font-weight: 800; font-size: 13.5px; }
-.chip .sub { flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.chip .tk { grid-area: tk; display: grid; }
+.chip .tk svg { width: 18px; height: 18px; }
+.chip .nm { grid-area: nm; font-weight: 800; font-size: 13px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chip .cash { grid-area: cash; font-weight: 800; font-size: 14px; }
+.chip .sub { grid-area: sub; font-size: 10.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .chip .debt { color: var(--bad); font-weight: 800; }
 .chip .worth { color: var(--muted); }
-.chip .dt { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+.chip .dt { grid-area: dt; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-align: right; }
+/* Where a card is too narrow for "worth $1,680" (or "worth $13,520"), the amount alone, in the worth's grey (a screen reader hears it all),
+   and a smaller piece and name. */
+@media (max-width: 399px) { .chip.long .lbl { display: none; } .chip.rich .cash { font-size: 12px; } }
+@media (max-width: 359px) {
+  .chip { column-gap: 3px; }
+  .chip .lbl { display: none; }
+  .chip .tk svg { width: 15px; height: 15px; }
+  .chip .nm { font-size: 11.5px; }
+  .chip .sub { font-size: 9.5px; }
+  .chip.rich .cash { font-size: 11px; }
+}
 .log {
   list-style: none; margin: 0; padding: 8px 10px; background: #0000002a; border-radius: 10px; color: var(--paper);
-  font-size: 13px; max-height: var(--logmax, 92px); overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 2px;
+  font-size: 13px; height: var(--logmax, 92px); overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 2px;
 }
 .log li { opacity: .7; }
 .log li:first-child { opacity: 1; }
 .log li.round { opacity: .9; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; padding-top: 4px; }
 /* In the What happened sheet the list reads top down, newest first. */
-.log.in-sheet { flex-direction: column; max-height: none; background: transparent; color: var(--ink); padding: 0; }
+.log.in-sheet { flex-direction: column; height: auto; max-height: none; background: transparent; color: var(--ink); padding: 0; }
 .log.in-sheet li { opacity: 1; }
 .log.in-sheet li.round { color: var(--muted); border-bottom: 1px solid var(--line); padding: 10px 0 2px; margin-bottom: 2px; }
 .log.in-sheet li.round:first-child { padding-top: 4px; }
@@ -209,8 +223,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (min-width: 900px) {
   .play { flex-direction: row; align-items: flex-start; justify-content: center; gap: 18px; }
   .side { width: 340px; }
-  .players { grid-template-columns: 1fr; }
-  .log { max-height: calc(var(--bh) - 330px); min-height: 120px; }
+  .players { grid-auto-flow: row; }
+  .chip {
+    border-radius: 12px; padding: 6px 8px; grid-template-rows: 19px 18px; column-gap: 8px;
+    grid-template-areas: "tk nm cash" "tk sub dt";
+  }
+  .chip .tk svg { width: 30px; height: 30px; }
+  .chip .nm { font-size: 14px; }
+  .chip .cash { font-size: 13.5px; text-align: right; }
+  .chip .sub { font-size: 13px; }
+  .chip .dt { font-size: 10px; }
+  .log { height: auto; max-height: calc(var(--bh) - 330px); min-height: 120px; }
   #logBtn { display: none; }
 }
 

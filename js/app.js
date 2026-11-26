@@ -362,12 +362,14 @@ function drawPlayers() {
     const worth = G.netWorth(s, p);
     const detours = `${pl.detours} detour${pl.detours === 1 ? '' : 's'}`;
     const now = p === s.turn && s.phase !== 'over';
-    // Two rows that never change shape: name and cash, then what they're worth, or what they owe while they owe it.
-    // Whose turn it is (the gold outline) and where each piece stands are written out for a screen reader.
-    return `<div class="chip${now ? ' now' : ''}" role="group" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
-      <span class="tk">${art.tokenSvg(pl.token, 30)}</span>
-      <span class="r"><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span></span>
-      <span class="r">${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth">worth ${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span></span>
+    // Rows that never change shape: the piece, name and cash, what they're worth (or what they owe while they owe it),
+    // and their detours. Beside the board they're two rows; on a phone, in one row of compact cards, three (see .chip
+    // in the css). Whose turn it is (the gold outline) and where each piece stands are written out for a screen reader.
+    // $10,000 and up, worth or cash, takes less room on a small phone: see .chip.long in the css.
+    const long = (!pl.debt && money(worth).length > 6 ? ' long' : '') + (money(pl.cash).length > 6 ? ' rich' : '');
+    return `<div class="chip${now ? ' now' : ''}${long}" role="group" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
+      <span class="tk">${art.tokenSvg(pl.token, 30)}</span><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span>
+      ${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth"><span class="lbl">worth </span>${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
       <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>
     </div>`;
   });
@@ -1059,30 +1061,39 @@ function chart() {
 }
 
 // ---------- fitting the board to the screen ----------
-// On a wide screen the board is square, beside the players. On a phone held upright it stands taller than it is
-// wide, with the players underneath, so the spaces down the sides and the middle of the board get more room.
-// On a phone the board leaves room for the header above it, and below it for the players' cards and two lines of What
-// happened (the newest, which a cut-off log would hide): measured once the play screen shows (startGame fits again),
-// and before that as four players' cards would need. The log then takes what's left, up to its usual height.
-const LOG_LOW = 44, LOG_HIGH = 92; // the log box's least and usual heights on a phone, in px
+// On a wide screen the board is square, beside the players. On a phone held upright it goes the width of the screen
+// and stands taller than it is wide, with the players in a row underneath, so the spaces down the sides and the middle
+// of the board get more room: as tall as the screen leaves room for, from 1,140 board units (the least that keeps the
+// side spaces' full-size drawings) to 1,400. Where even 1,140 won't fit the width, the board is narrower instead.
+// The board leaves room for the header above it, and below it for the players' cards and two lines of What happened
+// (the newest, which a cut-off log would hide): measured once the play screen shows (startGame fits again), and before
+// that as a row of cards would need. The log then takes what's left, so no band of empty felt is left under it.
+const LOG_LOW = 44, LOG_HIGH = 92; // the log box's least height on a phone, and its height where the page scrolls, in px
+const TALL_MIN = 1140, TALL_MAX = 1400; // a phone's board height, in board units (it's 900 across)
 function fit() {
   const vw = innerWidth, vh = innerHeight, root = document.documentElement.style;
-  const top = document.querySelector('.top').offsetHeight || 52, cards = $('players').offsetHeight || 118;
+  const top = document.querySelector('.top').offsetHeight || 52, cards = $('players').offsetHeight || 62;
   const pad = parseFloat(getComputedStyle($('app')).paddingBottom) || 0;
   const twoLines = Math.ceil(2 * 13 * 1.4 + 2 + 16); // two log lines, the gap between them and the log's padding
   const reserve = top + 10 + 10 + cards + 8 + twoLines + pad;
   let w, H;
   if (vw >= 900) { H = 900; w = Math.min(vh - 70, vw - 400, 860); }
-  else {
-    H = vh / vw > 1.45 ? 1260 : 900;
-    // A phone's board stops at 640 across; a tablet held upright goes as wide as leaves room below for the players.
-    w = Math.min(vw - 16, (vh - reserve) * 900 / H, vw >= 700 ? vh - reserve : 640);
+  else if (vh / vw > 1.45) {
+    // A phone held upright: the full width (up to 640 px), and the height the screen has room for.
+    const room = vh - reserve;
+    w = Math.min(vw - 16, 640);
+    H = Math.max(TALL_MIN, Math.min(TALL_MAX, Math.floor(room * 900 / w / 6) * 6)); // a whole number of units per side space
+    w = Math.min(w, room * 900 / H);
+  } else {
+    // A tablet held upright goes as wide as leaves room below for the players.
+    H = 900;
+    w = Math.min(vw - 16, vh - reserve, vw >= 700 ? Infinity : 640);
   }
   w = Math.max(260, Math.floor(w));
   const h = Math.round(w * H / 900);
   // Where even two lines can't fit (a phone held sideways), the page scrolls anyway, and the log keeps its height.
   const left = vh - (reserve - twoLines) - h;
-  root.setProperty('--logmax', (left >= LOG_LOW ? Math.min(Math.floor(left), LOG_HIGH) : LOG_HIGH) + 'px');
+  root.setProperty('--logmax', (left >= LOG_LOW ? Math.floor(left) : LOG_HIGH) + 'px');
   root.setProperty('--bw', w + 'px');
   root.setProperty('--bh', h + 'px');
   root.setProperty('--ctop', (150 / H * 100) + '%');
