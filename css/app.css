@@ -84,7 +84,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .float { font-size: 38px; paint-order: stroke; stroke: var(--paper); stroke-width: 7px; stroke-linejoin: round; }
 #board .tok { transition: none; filter: drop-shadow(0 3px 2px #0005); }
 #board .tok.now .lift { animation: bob 1.4s ease-in-out infinite; }
-@keyframes bob { 50% { transform: translateY(-5px); } }
+@keyframes bob { 50% { transform: translateY(-9px); } }
 #board .dest rect { fill: #e2b23c33; stroke: var(--gold); stroke-width: 6; stroke-dasharray: 14 8; animation: march 1s linear infinite; pointer-events: none; }
 #board .badge { cursor: pointer; }
 #board .badge circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; }

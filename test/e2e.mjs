@@ -550,6 +550,10 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }
 
+// In a stack of pieces, the piece whose turn it is is drawn on top, whatever its seat.
+await scene("s.players.forEach(p => { p.pos = 17; });");
+assert.equal(await page.$eval('#board .tokens > .tok:last-child', t => t.classList.contains('now')), true, 'the piece whose turn it is is under the others');
+
 // Tapping a space a move reaches makes that move, on its number badge (drawn over the pieces, so they never hide it) or
 // anywhere on the space; tapping the badge of a greyed one (a detour with none left) says why not. The move by both dice
 // has a badge of its own colour, as its button has.

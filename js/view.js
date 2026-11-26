@@ -143,6 +143,10 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       el.classList.toggle('now', p === s.turn && s.phase !== 'over');
     });
     while (view.tokenEls.length > s.players.length) view.tokenEls.pop().remove();
+    // The piece whose turn it is goes on top of any it shares a space with (moved only when it isn't already last: a
+    // moved piece starts its bob again).
+    const now = s.phase !== 'over' && view.tokenEls[s.turn];
+    if (now && tokensG.lastElementChild !== now) tokensG.appendChild(now);
     view.placeTokens(s);
     // Destination badges and build badges.
     // The tall board is drawn smaller on a phone, so its badges are bigger, and sit a little further in.
