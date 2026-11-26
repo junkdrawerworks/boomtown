@@ -15,8 +15,10 @@ const css = read('css/app.css')
 
 const html = read('index.html');
 const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script type="module"'));
-// The board game has one palette in both light and dark: felt and paper. Tell the viewer so.
-const out = `<title>Boomtown</title>
+// The charset comes first: the page holds ·, ☰ and ☷, and a viewer or a file opened from disk without it shows them as
+// mojibake. The board game has one palette in both light and dark: felt and paper. Tell the viewer so.
+const out = `<meta charset="utf-8">
+<title>Boomtown</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <style>${css}</style>
