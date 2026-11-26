@@ -705,6 +705,23 @@ assert.doesNotMatch(await page.textContent('#actions .since'), /rather|for sale/
   await desk.close();
 }
 
+// A tablet held upright, 768 x 1024: the board goes as wide as the screen allows, not a phone's 640, and the players
+// still fit below it.
+{
+  const tab = await browser.newContext({ viewport: { width: 768, height: 1024 }, hasTouch: true, serviceWorkers: 'block' });
+  const tp = await tab.newPage();
+  tp.on('pageerror', e => problems.push(e.message));
+  await tp.goto(base);
+  await tp.click('#startBtn');
+  await tp.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  const board = await tp.$eval('.board-wrap', el => el.getBoundingClientRect().toJSON());
+  const chips = await tp.$$eval('.chip', cs => Math.max(...cs.map(c => c.getBoundingClientRect().bottom)));
+  assert.ok(board.width >= 740, `the board is only ${Math.round(board.width)} px wide on an upright tablet`);
+  assert.ok(chips <= 1024, 'the players fall off the bottom of an upright tablet');
+  assert.equal(await tp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the game scrolls sideways on an upright tablet');
+  await tab.close();
+}
+
 // At a shared table nobody is called You: a person left with that name goes by their seat, on the title and in play.
 {
   const pp = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

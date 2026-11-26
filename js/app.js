@@ -1029,7 +1029,8 @@ function fit() {
   if (vw >= 900) { H = 900; w = Math.min(vh - 70, vw - 400, 860); }
   else {
     H = vh / vw > 1.45 ? 1260 : 900;
-    w = Math.min(vw - 16, (vh - 250) * 900 / H, 640);
+    // A phone's board stops at 640 across; a tablet held upright goes as wide as leaves room below for the players.
+    w = Math.min(vw - 16, (vh - 250) * 900 / H, vw >= 700 ? vh - 250 : 640);
   }
   w = Math.max(260, Math.floor(w));
   const h = Math.round(w * H / 900);
