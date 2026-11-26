@@ -423,10 +423,13 @@ assert.match(await page.textContent('#sheet #sheetTitle'), /How to play/, 'How t
 await page.click('#sheet [data-close]');
 
 // Founders' Day closed any way, by Escape, a tap outside it or its ✕, leaves its headline and See the results on the
-// board, which opens it again.
+// board, which opens it again. A player with a loan is shown owing it, as on their card, never with cash below nothing.
 for (const how of ['Escape', 'scrim', '✕']) {
   await scene('s.phase = "over"; s.players[1].cash = 0; s.players[1].debt = 110;');
   await page.waitForSelector('#sheet .standings li');
+  const rows = await page.$$eval('#sheet .standings small', es => es.map(e => e.textContent));
+  assert.ok(rows.some(r => /^owes \$110 · \$[\d,]+ land · \$[\d,]+ buildings$/.test(r)), `a player with a loan isn't shown owing it: ${rows}`);
+  assert.ok(rows.every(r => !r.includes('−')), `Founders' Day shows cash below nothing: ${rows}`);
   if (how === 'Escape') await page.keyboard.press('Escape');
   else if (how === 'scrim') await page.mouse.click(195, 4);
   else await page.click('#sheet [data-close]');

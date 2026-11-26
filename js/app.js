@@ -993,7 +993,7 @@ function finish() {
     const again = $('againLink');
     if (again) { again.onclick = finish; again.focus({ preventScroll: true }); }
   };
-  const rows = st.map(x => `<li>${art.tokenSvg(s.players[x.p].token, 28)}<span class="nm">${nm(x.p)}<small>${money(x.cash)} cash · ${money(x.land)} land · ${money(x.buildings)} buildings</small></span><span class="w">${money(x.worth)}</span></li>`).join('');
+  const rows = st.map(x => `<li>${art.tokenSvg(s.players[x.p].token, 28)}<span class="nm">${nm(x.p)}<small>${x.cash < 0 ? `owes ${money(-x.cash)}` : `${money(x.cash)} cash`} · ${money(x.land)} land · ${money(x.buildings)} buildings</small></span><span class="w">${money(x.worth)}</span></li>`).join('');
   const body = openSheet(`<div class="gazette"><div class="mast">The Boomtown Gazette</div>
       <div class="dateline"><span>Founders' Day</span><span>Special edition</span></div>
       <div class="head" id="sheetTitle">${head}</div></div>
