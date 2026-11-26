@@ -8,7 +8,7 @@ import { Whose } from './words.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 export const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the person asked for less motion
-const TOKEN_SCALE = 1.35;
+const TOKEN_SCALE = 1.35, TOKEN_R = 17.5; // a piece alone is drawn 1.35 times its size; it reaches 17.5 from its middle
 const usd = n => `$${n.toLocaleString('en-US')}`; // as money() in app.js writes it
 // A player's colour a fifth of the way to ink, for the rent tags: white on it reads at 5:1 or better.
 const deepen = hex => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * 0.8 + parseInt(art.INK.slice(k, k + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
@@ -116,14 +116,29 @@ export function createBoard(svg, { onCell, onDest } = {}) {
 
   view.cellCenter = i => { const L = layout(i); return L.tok; };
 
+  // Where piece p goes on space `at`, and how big: [x, y, scale]. Pieces sharing a space are drawn smaller, side by side
+  // or two by two, touching but not overlapping, so the drawing still shows between them. The stack keeps clear of the
+  // price or rent tag, moving up on the short spaces down the sides of the square board to do so.
   function tokenPos(p, at, players) {
     const here = players.map((pl, q) => ({ q, at: q === p ? at : view.shown[q] })).filter(o => o.at === at).map(o => o.q);
     const k = here.indexOf(p), n = here.length;
-    const [cx, cy] = layout(at).tok;
-    const offs = n <= 1 ? [[0, 0]] : n === 2 ? [[-17, 0], [17, 0]] : [[-17, -14], [17, -14], [-17, 14], [17, 14]];
+    const L = layout(at), scale = n <= 1 ? TOKEN_SCALE : n === 2 ? 1.15 : 1;
+    const R = TOKEN_R * scale; // a piece's reach from its middle, outline and all
+    const offs = n <= 1 ? [[0, 0]] : n === 2 ? [[-R, 0], [R, 0]] : [[-17, -16], [17, -16], [-17, 16], [17, 16]];
     const [dx, dy] = offs[Math.max(0, k)] || [0, 0];
-    return [cx + dx, cy + dy];
+    let [cx, cy] = L.tok;
+    if (L.r.side !== 'corner') {
+      const tagTop = L.tag[1] - (H > SIZE ? 17 : 14), reach = (n >= 3 ? 16 : 0) + R;
+      cy = Math.max(L.r.y + reach, Math.min(cy, tagTop - 1 - reach));
+    }
+    return [cx + dx, cy + dy, scale];
   }
+  // Place a piece's group, and size the drawing inside it.
+  const putToken = (el, [x, y, scale]) => {
+    el.style.transform = `translate(${x}px, ${y}px)`;
+    const g = el.querySelector('.size');
+    if (g._scale !== scale) { g.setAttribute('transform', `scale(${scale})`); g._scale = scale; }
+  };
 
   view.render = (s, { dests = [], buildable = [], focus = null, labels = {} } = {}) => {
     view.last = s;
@@ -136,7 +151,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       if (!el) {
         el = document.createElementNS(NS, 'g');
         el.classList.add('tok');
-        el.innerHTML = `<g class="lift"><g transform="scale(${TOKEN_SCALE})">${art.token(pl.token)}</g></g>`;
+        el.innerHTML = `<g class="lift"><g class="size" transform="scale(${TOKEN_SCALE})">${art.token(pl.token)}</g></g>`;
         tokensG.appendChild(el);
         view.tokenEls[p] = el;
       }
@@ -181,10 +196,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
   view.focus = i => { if (view.last) view.render(view.last, { ...view.lastMarks, focus: i }); };
 
   view.placeTokens = s => {
-    s.players.forEach((pl, p) => {
-      const [x, y] = tokenPos(p, view.shown[p], s.players);
-      view.tokenEls[p].style.transform = `translate(${x}px, ${y}px)`;
-    });
+    s.players.forEach((pl, p) => putToken(view.tokenEls[p], tokenPos(p, view.shown[p], s.players)));
   };
 
   function drawCell(g, i, s, labels) {
@@ -245,13 +257,13 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     for (const at of path) {
       const [x0, y0] = tokenPos(p, view.shown[p], s.players);
       view.shown[p] = at;
-      const [x1, y1] = tokenPos(p, at, s.players);
+      const to = tokenPos(p, at, s.players), [x1, y1] = to;
       if (msPerStep > 0) {
         const lift = el.querySelector('.lift');
         lift.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-22px)' }, { transform: 'translateY(0)' }], { duration: msPerStep, easing: 'ease-out' });
         await el.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${x1}px, ${y1}px)` }], { duration: msPerStep, easing: 'ease-in-out' }).finished;
       }
-      el.style.transform = `translate(${x1}px, ${y1}px)`;
+      putToken(el, to);
     }
     view.placeTokens(s);
   };
