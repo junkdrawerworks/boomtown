@@ -139,7 +139,7 @@ export function chooseDecision(s) {
     case 'buy': return wouldBuy(s, q.at, pl.cash, q.price) ? 'buy' : 'pass';
     case 'rent': return wouldForce(s, q.at, pl.cash, q.buyout ?? null) ? 'buyout' : 'pay';
     case 'office': return bestToBuy(s, emptyLots(s), i => landValue(s, i)) ?? 'pass';
-    case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 2)) ?? 'pass';
+    case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 10) * 5) ?? 'pass'; // half, to the $5, as decide() charges
     case 'yard': return bestBuild(s, 0.5, true) ?? 'pass';
     case 'hall': {
       // The district where this bot has the most riding on it: its own land there, less what the rise hands its

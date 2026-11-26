@@ -336,3 +336,13 @@ test("at City Hall a townsperson rezones where they have the most riding on it, 
   t.pending = { kind: 'hall' }; t.phase = 'decide';
   assert.notEqual(chooseDecision(t), 'mill');
 });
+
+test("a townsperson reckons the Estate sale's half price to the $5, as the sale charges it", () => {
+  // Tannery Lane on $75 of land costs $40, not $38: with $38, Rusty can't buy it.
+  const t = botGame('rusty');
+  t.land.mill = 1.25;
+  for (const i of OWNABLE) t.owner[i] = i === at('Tannery Lane') ? -1 : 1;
+  t.players[0].cash = 38;
+  t.pending = { kind: 'estate' }; t.phase = 'decide';
+  assert.doesNotThrow(() => G.decide(t, chooseDecision(t)));
+});
