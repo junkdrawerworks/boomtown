@@ -770,7 +770,7 @@ await scene("B.OWNABLE.forEach(i => { if (s.owner[i] === 0) s.owner[i] = 1; }); 
   assert.ok((await moves()).includes(`Detour, one dieLookout Point: rent $${await page.evaluate(() => window.boomtown.G.rentFor(window.boomtown.state, 25))} to Rusty · or make them sell, $${price.toLocaleString('en-US')}`),
     `a move to a rival's empty lot doesn't offer the forced sale: ${await moves()}`);
   assert.equal((await moves()).filter(m => m.includes('or make them sell')).length, 3);
-  // Short of Mill Row's and Tannery Lane's price now, but not once Payday has paid on the way there; short of Lookout
+  // Short of Millrace Yard's and Tannery Lane's price now, but not once Payday has paid on the way there; short of Lookout
   // Point's even so: rent only there.
   const mill = await page.evaluate(() => window.boomtown.G.buyoutPrice(window.boomtown.state, 2));
   await scene(sale + `s.players[0].cash = ${mill - 100};`);
