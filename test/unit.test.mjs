@@ -782,3 +782,24 @@ test("the Land Office's rows: a lot's empty rent once yours, and where its distr
   s.owner[DEPOTS[1]] = 0;
   assert.deepEqual(W.forSale(s, DEPOTS[0], 0), { finishes: true, line: 'Makes both depots yours · rent $100' });
 });
+
+test('Records: the tally against each of the townsfolk and the last five results, from an older record too', () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Dot', kind: 'bot', bot: 'dot', token: 1 }, { name: 'Gus', kind: 'bot', bot: 'gus', token: 2 }], seed: 3 });
+  const st = [{ p: 1, worth: 3000, cash: 0 }, { p: 0, worth: 2500, cash: 0 }, { p: 2, worth: 2000, cash: 0 }];
+  let r = W.addGame({ played: 2, won: 1, best: 2600 }, s, st, '2026-11-26'); // a record from before the tally
+  assert.deepEqual(r, { played: 3, won: 1, best: 2600, vs: { dot: { played: 1, beaten: 0 }, gus: { played: 1, beaten: 1 } }, last: [{ date: '2026-11-26', place: 2, of: 3, worth: 2500 }] });
+  for (const date of ['2026-11-27', '2026-11-28', '2026-11-29', '2026-11-30']) r = W.addGame(r, s, [st[1], st[0], st[2]], date);
+  assert.deepEqual([r.played, r.won, r.vs.dot, r.last.map(x => x.date)], [7, 5, { played: 5, beaten: 4 }, ['2026-11-30', '2026-11-29', '2026-11-28', '2026-11-27', '2026-11-26']]);
+  const six = W.addGame(r, s, st, '2026-12-01');
+  assert.deepEqual(six.last.map(x => x.date), ['2026-12-01', '2026-11-30', '2026-11-29', '2026-11-28', '2026-11-27'], 'only the last five results are kept');
+  // Two people: the best-placed one counts, named.
+  s.players[2].kind = 'human'; s.players[2].bot = null; s.players[2].name = 'Ann';
+  const two = W.addGame(undefined, s, [st[2], st[1], st[0]].map((x, k) => ({ ...x, worth: 3000 - 500 * k })), '2026-01-02');
+  assert.deepEqual(two.last, [{ date: '2026-01-02', place: 1, of: 3, worth: 3000, name: 'Ann' }]);
+  assert.deepEqual(two.vs, { dot: { played: 1, beaten: 1 } });
+  const h = W.recordsHtml(r, { mabel: 'Mabel', dot: 'Dot', gus: 'Gus' }, new Date(2026, 10, 30)).replace(/(<[^>]+>\s*)+/g, '|');
+  assert.ok(h.includes('|Beat Dot|4 times in 5|') && h.includes('|Beat Gus|5 times in 5|') && !h.includes('Mabel'), h);
+  assert.ok(h.includes('The last five games') && h.includes('|Nov 26|2nd of 3 · $2,500|'), h);
+  assert.ok(W.recordsHtml(two, { dot: 'Dot' }, new Date(2027, 0, 1)).includes('Jan 2, 2026, Ann'), 'a result from another year has its year');
+  assert.ok(!W.recordsHtml(null, {}).includes('almanac'), 'no games, no almanac');
+});

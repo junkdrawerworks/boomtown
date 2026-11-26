@@ -143,6 +143,62 @@ export function shareText(s, st) {
     ...st.map((x, k) => `${k + 1}. ${name(x.p)} ${money(x.worth)}`), 'boomtown.junkdrawer.works'].join('\n');
 }
 
+// Records, kept on the device: games finished, games won by a person and the best worth on Founders' Day; how the
+// people at the table did against each of the townsfolk ({ mabel: { played, beaten } }); and the last five results,
+// newest first ({ date: '2026-11-26', place: 1, of: 4, worth, name }). Read from whatever was saved, which may be an
+// older record with only the first three.
+const NO_RECORDS = { played: 0, won: 0, best: 0 };
+export const readRecords = (r = {}) => ({
+  ...NO_RECORDS, ...r, vs: Object.fromEntries(Object.entries(r?.vs || {}).map(([id, v]) => [id, { ...v }])), last: [...(r?.last || [])],
+});
+// The record with a finished game added (G.standings for `st`, the local date as 'YYYY-MM-DD'). The townsfolk are
+// beaten when the best-placed person finishes above them; a result is that person's place and worth, with their name
+// when more than one person played.
+export function addGame(saved, s, st, date) {
+  const r = readRecords(saved);
+  const k = st.findIndex(x => s.players[x.p].kind === 'human');
+  if (k < 0) return r;
+  r.played++;
+  if (k === 0) r.won++;
+  for (const x of st) if (s.players[x.p].kind === 'human') r.best = Math.max(r.best, x.worth);
+  st.forEach((x, j) => {
+    const pl = s.players[x.p];
+    if (pl.kind !== 'bot') return;
+    const v = (r.vs[pl.bot] ||= { played: 0, beaten: 0 });
+    v.played++;
+    if (k < j) v.beaten++;
+  });
+  const people = s.players.filter(pl => pl.kind === 'human').length;
+  r.last = [{ date, place: k + 1, of: st.length, worth: st[k].worth, ...(people > 1 ? { name: s.players[st[k].p].name } : {}) }, ...r.last].slice(0, 5);
+  return r;
+}
+const PLACE = ['1st', '2nd', '3rd', '4th'];
+// A saved date as the Gazette would print it: 'Nov 26', with the year when it isn't this one.
+const shortDate = (date, now) => {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(y !== now.getFullYear() ? { year: 'numeric' } : {}) });
+};
+// The Records sheet: the three numbers, then the townsfolk's tally and the last five results as the Gazette's almanac.
+// `names`: the townsfolk's names by id.
+export function recordsHtml(saved, names, now = new Date()) {
+  const r = readRecords(saved);
+  let h = `<h2 id="sheetTitle">Records</h2>
+    <table class="facts"><tr><td>Games finished</td><td>${r.played}</td></tr><tr><td>Won by a person</td><td>${r.won}</td></tr>
+    <tr><td>Best worth on Founders' Day</td><td>${r.best ? money(r.best) : '—'}</td></tr></table>`;
+  const vs = Object.keys(names).filter(id => r.vs[id]?.played);
+  if (vs.length) {
+    h += `<div class="almanac"><h3>Against the townsfolk</h3><ul>${vs.map(id => {
+      const { played, beaten } = r.vs[id];
+      return `<li><span>Beat ${esc(names[id])}</span><i></i><span>${beaten} ${beaten === 1 ? 'time' : 'times'} in ${played}</span></li>`;
+    }).join('')}</ul></div>`;
+  }
+  if (r.last.length) {
+    h += `<div class="almanac"><h3>${r.last.length === 1 ? 'The last game' : `The last ${count(r.last.length)} games`}</h3><ul>${r.last.map(g =>
+      `<li><span>${shortDate(g.date, now)}${g.name ? `, ${esc(g.name)}` : ''}</span><i></i><span>${PLACE[g.place - 1]} of ${g.of} · ${money(g.worth)}</span></li>`).join('')}</ul></div>`;
+  }
+  return h;
+}
+
 // How to play.
 export function rulesHtml() {
   return `<div class="rules"><h2 id="sheetTitle">How to play</h2>

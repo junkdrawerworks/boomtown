@@ -201,6 +201,14 @@ assert.equal(await page.isVisible('#sheet .chart'), true);
     "the Gazette covers Founders' Day's ✕");
   assert.match(await page.getAttribute('#sheet .chart', 'aria-label'), /round by round\. (You|Mabel) ended on −?\$[\d,]+, (You|Mabel) on −?\$[\d,]+\.$/, "the chart doesn't say where each player ended");
 }
+// Records remember the game: your tally against Mabel, and the result, with the day, your place and your worth.
+{
+  const r = await page.evaluate(() => JSON.parse(localStorage.getItem('boomtown.records')));
+  const st = await page.evaluate(() => window.boomtown.G.standings(window.boomtown.state));
+  const k = st.findIndex(x => x.p === 0), d = new Date();
+  assert.deepEqual([r.played, r.won, r.vs, r.last], [1, k === 0 ? 1 : 0, { mabel: { played: 1, beaten: k === 0 ? 1 : 0 } },
+    [{ date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, place: k + 1, of: 2, worth: st[k].worth }]], `Records don't remember the game: ${JSON.stringify(r)}`);
+}
 const firstGame = await page.evaluate(() => window.boomtown.state.players.map(p => [p.name, p.token, p.history[0]]));
 await page.click('#sheet [data-a="again"]');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
@@ -727,6 +735,12 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   await page.click('#menuBtn');
   await page.waitForTimeout(800);
   await page.click('#sheet [data-a="leave"]');
+  // On the title screen, Records has the game finished above in the Gazette's almanac.
+  await page.click('#recordsBtn');
+  assert.deepEqual(await page.$$eval('#sheet .almanac h3', hs => hs.map(h => h.textContent)), ['Against the townsfolk', 'The last game']);
+  assert.match(await page.textContent('#sheet .almanac li'), /^Beat Mabel(0 times|1 time) in 1$/);
+  assert.match(await page.textContent('#sheet .almanac + .almanac li'), /^[A-Z][a-z]{2} \d{1,2}(1st|2nd) of 2 · −?\$[\d,]+$/);
+  await page.click('#sheet [data-close]');
   await page.click('#resumeBtn');
   await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
   assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');

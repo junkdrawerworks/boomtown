@@ -1221,10 +1221,8 @@ function showRules() {
 }
 
 function showRecords() {
-  const r = store.get(RECORDS, { played: 0, won: 0, best: 0 });
-  openSheet(`<h2 id="sheetTitle">Records</h2>
-    <table class="facts"><tr><td>Games finished</td><td>${r.played}</td></tr><tr><td>Won by a person</td><td>${r.won}</td></tr>
-    <tr><td>Best worth on Founders' Day</td><td>${r.best ? money(r.best) : '—'}</td></tr></table>
+  const names = Object.fromEntries(Object.entries(BOTS).map(([id, b]) => [id, b.name]));
+  openSheet(`${W.recordsHtml(store.get(RECORDS, {}), names)}
     <p class="note">${store.works() ? 'Kept on this device only.' : "Not kept here: this browser isn't saving anything."}</p>`);
 }
 
@@ -1236,14 +1234,10 @@ function celebrate() {
 }
 function finish() {
   const st = G.standings(s);
-  const winner = s.players[st[0].p];
   // Records, once per game.
   if (!s.recorded && s.players.some(p => p.kind === 'human')) {
-    const r = store.get(RECORDS, { played: 0, won: 0, best: 0 });
-    r.played++;
-    if (winner.kind === 'human') r.won++;
-    for (const x of st) if (s.players[x.p].kind === 'human') r.best = Math.max(r.best, x.worth);
-    store.set(RECORDS, r);
+    const d = new Date(), date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    store.set(RECORDS, W.addGame(store.get(RECORDS, {}), s, st, date));
   }
   s.recorded = true;
   save();
