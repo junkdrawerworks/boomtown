@@ -36,7 +36,9 @@ function layout(i) {
 
 const CORNER_LABEL = { payday: 'PAYDAY', office: 'LAND OFFICE', square: 'TOWN SQUARE', hall: 'CITY HALL' };
 
-export function createBoard(svg, { onCell } = {}) {
+// onCell(i): a space was tapped (or Enter pressed on it). onDest(i): a space a move can reach, marked on the board, was
+// tapped: the whole space if the move can be made, or its number badge either way.
+export function createBoard(svg, { onCell, onDest } = {}) {
   svg.setAttribute('viewBox', `0 0 ${SIZE} ${H}`);
   svg.innerHTML = `
     <defs>
@@ -64,19 +66,28 @@ export function createBoard(svg, { onCell } = {}) {
     const r = cellRect(kbdAt, H), box = `x="${r.x + 6}" y="${r.y + 6}" width="${r.w - 12}" height="${r.h - 12}" rx="6"`;
     kbdG.innerHTML = `<rect class="ink" ${box}/><rect class="gold" ${box}/>`;
   };
+  // A move's space, while the move can be made, makes it; any other space opens its sheet.
+  const tap = i => {
+    if (onDest && view.lastMarks?.dests.some(d => d.to === i && d.usable !== false)) onDest(i);
+    else onCell?.(i);
+  };
   for (let i = 0; i < N; i++) {
     const g = document.createElementNS(NS, 'g');
     g.classList.add('cell');
     g.dataset.i = i;
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'button');
-    g.addEventListener('click', () => onCell?.(i));
-    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCell?.(i); } });
+    g.addEventListener('click', () => tap(i));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(i); } });
     g.addEventListener('focus', () => { if (g.matches(':focus-visible')) { kbdAt = i; drawKbd(); } });
     g.addEventListener('blur', () => { if (kbdAt === i) { kbdAt = null; drawKbd(); } });
     cellsG.appendChild(g);
     cells.push(g);
   }
+  marksG.addEventListener('click', e => {
+    const d = e.target.closest('.dest');
+    if (d) onDest?.(+d.dataset.i);
+  });
 
   const view = { svg, shown: [], tokenEls: [], last: null };
 

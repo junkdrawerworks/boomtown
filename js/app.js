@@ -35,7 +35,7 @@ let ringed = null;             // the space a sheet is about, ringed on the boar
 let unused = null;             // after a detour, which die (0 or 1) wasn't moved by: it's dimmed until the next roll
 let said = null;               // what the line in the middle last said (see setSay)
 let returnTo = null;           // where the focus was when a sheet opened, to go back to when it closes
-const view = createBoard($('board'), { onCell: i => showSpace(i) });
+const view = createBoard($('board'), { onCell: i => showSpace(i), onDest: i => onDest(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const pace = () => (prefs.speed === 'fast' ? 0.35 : 1);
@@ -422,6 +422,16 @@ async function onMove(o) {
   const told = ev.some(e => e.t === 'card' || e.t === 'kitty' || e.t === 'pay' || (e.t === 'collect' && e.why !== 'Payday'));
   note = !note ? landedNote() : told ? note : `${note} ${landedNote(true)}`;
   render();
+}
+
+// A tap on a space the dice reach makes that move, as its button does; a greyed one (a detour with none left) says why
+// it can't.
+function onDest(to) {
+  if (!s || busy || !isHumanTurn() || s.phase !== 'move') return;
+  const o = G.moveOptions(s).find(x => x.to === to); // the moves always reach different spaces
+  if (!o) return;
+  if (!o.usable) { note = 'No detours left until Payday.'; render(); return; }
+  onMove(o);
 }
 
 // Where you landed, when it asked nothing: and why not, where a space might have.

@@ -86,7 +86,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .tok.now .lift { animation: bob 1.4s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-5px); } }
 #board .dest rect { fill: #e2b23c33; stroke: var(--gold); stroke-width: 6; stroke-dasharray: 14 8; animation: march 1s linear infinite; pointer-events: none; }
-#board .dest circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; }
+#board .dest circle { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; cursor: pointer; }
 #board .dest text { font-size: 22px; fill: var(--ink); }
 #board .dest.off rect { stroke: #9a8f7c; fill: transparent; animation: none; }
 #board .dest.off circle { fill: #d6ccb6; }

@@ -550,6 +550,33 @@ await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
   assert.match(await page.getAttribute('#board .cell[data-i="0"]', 'aria-label'), /^Payday: collect \$150 passing, \$250 landing\./, "Payday's label does not say what it pays");
 }
 
+// Tapping a space a move reaches makes that move, on its number badge or anywhere on the space; tapping the badge of a
+// greyed one (a detour with none left) says why not.
+await scene("s.players[0].detours = 0; s.dice = [2, 5]; s.phase = 'move';");
+{
+  const moves = await page.evaluate(() => window.boomtown.G.moveOptions(window.boomtown.state));
+  const off = moves.find(o => !o.usable), both = moves.find(o => !o.detour);
+  await page.click(`#board .dest[data-i="${off.to}"] circle`);
+  assert.equal(await page.textContent('#say'), 'No detours left until Payday.', 'a greyed badge says nothing when tapped');
+  assert.equal(await page.evaluate(() => window.boomtown.state.phase), 'move');
+  await page.click(`#board .dest[data-i="${both.to}"] circle`);
+  await page.waitForFunction(() => window.boomtown.state.phase !== 'move', null, { timeout: 5000 }).catch(() => {});
+  assert.notEqual(await page.evaluate(() => window.boomtown.state.phase), 'move', 'tapping the badge of a move does not make it');
+  assert.equal(await page.evaluate(() => window.boomtown.state.players[0].pos), both.to, 'the badge tapped moved somewhere else');
+  await page.waitForFunction(() => !window.boomtown.busy);
+}
+await scene("s.players[0].detours = 2; s.dice = [2, 5]; s.phase = 'move';");
+{
+  const to = await page.evaluate(() => window.boomtown.G.moveOptions(window.boomtown.state).find(o => o.steps === 2).to);
+  const box = await page.$eval(`#board .cell[data-i="${to}"] .bg`, r => { const b = r.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height - 8 }; });
+  await page.mouse.click(box.x, box.y);
+  await page.waitForFunction(() => window.boomtown.state.phase !== 'move', null, { timeout: 5000 }).catch(() => {});
+  assert.equal(await page.evaluate(() => window.boomtown.state.players[0].pos), to, 'tapping the space a detour reaches does not move there');
+  assert.equal(await page.evaluate(() => window.boomtown.state.players[0].detours), 1, 'the detour tapped did not cost a detour');
+  await page.waitForTimeout(800);
+  if (await sheetOpen()) await answer();
+}
+
 // Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
 await scene('', { round: 4 });
 await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));
