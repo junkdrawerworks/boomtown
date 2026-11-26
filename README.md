@@ -9,7 +9,7 @@
   &nbsp;
   <img src="docs/phone-gazette.png" alt="The Boomtown Gazette, round 14: DOCTOR BUILDS ON THE HILL. Everyone wants the view now. Hilltop land goes up 20%" width="250">
   &nbsp;
-  <img src="docs/phone-founders-day.png" alt="Founders' Day: the Gazette's special edition says You are the richest in Boomtown, with $3,040 against Dot's $2,722, then each player's cash, land and buildings, and a chart of everyone's worth round by round" width="250">
+  <img src="docs/phone-founders-day.png" alt="Founders' Day: the Gazette's special edition says You are the richest in Boomtown, with $3,040 against Dot's $2,720, then each player's cash, land and buildings, and a chart of everyone's worth round by round" width="250">
 </p>
 
 ## How it plays
