@@ -902,7 +902,9 @@ function openSheet(html, { light = false, closable = true, onClose = null } = {}
   onSheetClose = closable ? onClose : null;
   $('scrim').onclick = closable ? () => closeSheet(true) : null;
   $('sheet').scrollTop = 0;
-  const first = $('sheet').querySelector('.buttons button:not(:disabled), .pick:not(:disabled), button:not(.close):not(:disabled)');
+  // A row of a list that only tells (a player's lots, Your lots) is a .pick too, but can't take the focus: the heading does.
+  let first = $('sheet').querySelector('.buttons button:not(:disabled), .pick:not(:disabled), button:not(.close):not(:disabled)');
+  if (first && first.tabIndex < 0) first = null;
   const head = $('sheetTitle');
   if (!first && head) head.tabIndex = -1;
   (first || head || $('sheet')).focus({ preventScroll: true });

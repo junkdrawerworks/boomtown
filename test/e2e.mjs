@@ -778,6 +778,7 @@ await scene();
   await page.keyboard.press('Enter');
   assert.equal((await page.textContent('#sheetTitle')).trim(), 'Dot', "Enter on Dot's card while the townsfolk play doesn't open Dot's sheet");
   assert.equal(await page.textContent('#sheet .line'), 'Wants whole streets, and will force a sale to get one.');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'sheetTitle', "a player's sheet does not put the focus on their name");
   const snap = () => page.evaluate(() => { const s = window.boomtown.state; return JSON.stringify([s.turn, s.phase, s.players.map(p => p.pos), s.owner, s.level]); });
   await page.waitForTimeout(1200);
   const held = await snap();
