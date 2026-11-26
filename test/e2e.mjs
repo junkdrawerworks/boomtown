@@ -234,6 +234,42 @@ await page.setViewportSize({ width: 375, height: 667 });
 await scene("s.phase = 'manage'; s.dice = [1, 2];");
 assert.deepEqual(await page.$$eval('#actions .row button', bs => bs.filter(b => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1; }).map(b => b.textContent)),
   [], 'a button in the middle of the board wraps onto two lines at 375 px');
+
+// The same small phone choosing a move whose buttons run long (every lot a block of Rusty's, the land as high as it
+// goes, Payday on the way): the dice stay clear of the line under them and of the buttons, nothing in the middle
+// spills onto the spaces round it, and the detours line keeps to one line. Measured on each die, not the dice's box,
+// which is what used to shrink under them.
+await scene(`B.OWNABLE.forEach(i => { if (B.SPACES[i].type === 'lot') { s.owner[i] = 1; s.level[i] = 3; } }); for (const d in s.land) s.land[d] = G.RULES.landMax;
+  s.players[0].pos = 24; s.players[0].detours = 2;
+  for (let r = 1; ; r++) { const t = { ...s, rng: r }; G.roll(t); if (t.dice[0] === 1 && t.dice[1] === 5) { s.rng = r; break; } }`);
+await page.click('#actions button:has-text("Roll the dice")');
+await page.waitForSelector('.move-btn');
+await page.waitForTimeout(300);
+{
+  const m = await page.evaluate(() => {
+    const box = e => e.getBoundingClientRect();
+    const hit = (a, b) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5 && Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5;
+    const c = box(document.getElementById('center')), say = box(document.getElementById('say')), act = box(document.getElementById('actions'));
+    const dice = [...document.querySelectorAll('#dice .die')].map(box);
+    const det = document.querySelector('#actions .detours'), r = document.createRange();
+    r.selectNodeContents(det);
+    return {
+      dice: dice.length, over: dice.some(d => hit(d, say) || hit(d, act)),
+      out: [...document.getElementById('center').children].filter(e => e.getClientRects().length).filter(e => { const b = box(e); return b.top < c.top - 0.5 || b.bottom > c.bottom + 0.5 || b.left < c.left - 0.5 || b.right > c.right + 0.5; }).map(e => e.id),
+      lines: new Set([...r.getClientRects()].map(x => Math.round(x.top))).size, det: det.textContent, say: document.getElementById('say').textContent,
+      long: [...document.querySelectorAll('.move-btn')].filter(b => /passing Payday/.test(b.textContent)).length,
+    };
+  });
+  assert.equal(m.say, 'Move by both dice, or take a detour by one.');
+  assert.equal(m.long, 2, 'the scene has lost its long move buttons');
+  assert.equal(m.dice, 2);
+  assert.equal(m.over, false, 'the dice are drawn over the line or the move buttons at 375x667');
+  assert.deepEqual(m.out, [], 'the middle of the board spills onto the spaces round it at 375x667');
+  assert.equal(m.det, 'Detours ◆◆ (all you can hold)', 'the detours line at two says Payday gives one back');
+  assert.equal(m.lines, 1, `the detours line wraps at 375 px: ${m.det}`);
+}
+await scene("s.players[0].detours = 1; s.dice = [2, 5]; s.phase = 'move';");
+assert.equal(await page.textContent('#actions .detours'), 'Detours ◆ · one back at Payday');
 await page.setViewportSize({ width: 390, height: 844 });
 
 // Dice emptied between turns forget what they showed: a roll of the same pair as the last one shown is still drawn.

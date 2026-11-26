@@ -257,7 +257,9 @@ function render() {
     }
     const d = document.createElement('div');
     d.className = 'detours';
-    d.textContent = pl.detours ? `Detours left: ${'◆'.repeat(pl.detours)} (one back each Payday)` : 'No detours left until Payday.';
+    // One line, even on a small phone. Payday gives one back only below the most you can hold.
+    d.textContent = !pl.detours ? 'No detours left until Payday.'
+      : pl.detours >= G.RULES.detourMax ? `Detours ${'◆'.repeat(pl.detours)} (all you can hold)` : `Detours ${'◆'.repeat(pl.detours)} · one back at Payday`;
     a.append(d);
   } else if (s.phase === 'manage') {
     const n = OWNABLE.filter(i => G.canBuild(s, p, i).ok).length;
@@ -1044,6 +1046,7 @@ function fit() {
   root.setProperty('--bh', h + 'px');
   root.setProperty('--ctop', (150 / H * 100) + '%');
   root.setProperty('--cheight', ((H - 300) / H * 100) + '%');
+  $('center').classList.toggle('snug', w < 360); // a small phone's board: see .center.snug
   view.setHeight(H);
 }
 addEventListener('resize', fit);
