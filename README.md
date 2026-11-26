@@ -5,7 +5,7 @@
 **An around-the-board game in a town that isn't built yet.** You buy empty lots round a ring road and build on them: For Sale signs turn into houses, then shops, then brick blocks. Every building lifts the land and the rents on its street, rivals' lots included. When the last round ends it's Founders' Day, and whoever is worth the most wins. Play the townsfolk, or pass the phone.
 
 <p align="center">
-  <img src="docs/phone-move.png" alt="Round 14 of 20 on a phone: two dice showing 3 and 4, and three moves marked on the board. Both dice, 7, lands on Ferry Landing with $275 rent to Rusty; a detour of 3 reaches the Land Office; a detour of 4 is Orchard Lane, $280 rent to Dot" width="250">
+  <img src="docs/phone-move.png" alt="Round 14 of 20 on a phone: two dice showing 3 and 4, and three moves marked on the board. Both dice, 7, lands on Ferry Landing with $275 rent to Rusty; a detour of 3 reaches the Land Office; a detour of 4 is Windfall Lane, $280 rent to Dot" width="250">
   &nbsp;
   <img src="docs/phone-gazette.png" alt="The Boomtown Gazette, round 14: DOCTOR BUILDS ON THE HILL. Everyone wants the view now. Hilltop land goes up 20%" width="250">
   &nbsp;
