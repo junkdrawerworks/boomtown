@@ -442,6 +442,35 @@ for (const how of ['Escape', 'scrim', '✕']) {
 await page.click('#sheet [data-a="board"]');
 assert.equal(await page.evaluate(() => document.activeElement?.id), 'againLink', 'Look at the town does not leave See the results');
 
+// Your lots keeps its place after a build or a sale: scrolled to the foot of a long list on a small phone, it opens
+// again where it was, with the focus back on the lot's own button.
+await page.setViewportSize({ width: 375, height: 667 });
+await scene("Object.keys(s.owner).forEach(i => { if (B.SPACES[i].type === 'lot') { s.owner[i] = 0; s.level[i] = 1; } }); s.players[0].cash = 20000; s.phase = 'manage'; s.dice = [1, 2];");
+{
+  const reopened = async i => {
+    await page.waitForFunction(i => window.boomtown.state.level[i] !== window.was && !window.boomtown.busy && !document.getElementById('sheetWrap').hidden, i, { timeout: 10000 });
+    await page.waitForTimeout(100);
+    return page.evaluate(() => ({ top: document.getElementById('sheet').scrollTop, focus: document.activeElement.dataset.build ?? document.activeElement.dataset.sell ?? document.activeElement.className }));
+  };
+  await page.click('#actions button:has-text("Build"), #actions button:has-text("Your lots")');
+  await page.$eval('#sheet', sh => { sh.scrollTop = sh.scrollHeight; });
+  const i = await page.$$eval('#sheet [data-build]:not(:disabled)', bs => +bs[bs.length - 1].dataset.build);
+  await page.evaluate(i => { window.was = window.boomtown.state.level[i]; }, i);
+  await page.click(`#sheet [data-build="${i}"]`);
+  const built = await reopened(i);
+  assert.ok(built.top > 0, 'Your lots goes back to the top after a build');
+  assert.equal(built.focus, String(i), "after a build the focus isn't on the lot's build button");
+  await page.$eval('#sheet', sh => { sh.scrollTop = sh.scrollHeight; });
+  await page.evaluate(i => { window.was = window.boomtown.state.level[i]; }, i);
+  await page.click(`#sheet [data-sell="${i}"]`);
+  await page.click(`#sheet [data-sell="${i}"]`);
+  const sold = await reopened(i);
+  assert.ok(sold.top > 0, 'Your lots goes back to the top after a sale');
+  assert.equal(sold.focus, String(i), "after a sale the focus isn't on the lot's sell button");
+  await page.click('#sheet [data-close]');
+}
+await page.setViewportSize({ width: 390, height: 844 });
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {

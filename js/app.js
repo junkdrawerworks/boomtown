@@ -754,8 +754,9 @@ function showSpace(i) {
   body.querySelector('[data-sell]')?.addEventListener('click', () => { closeSheet(); doSell(i); });
 }
 
-// The current player's lots, with build and sell buttons.
-function showLots() {
+// The current player's lots, with build and sell buttons. After a build or a sale it opens again where it was:
+// scrolled to `at.scroll`, with the focus on the same lot's button (`at.focus`), or on its row once that's gone.
+function showLots(at = null) {
   const p = s.turn;
   const mine = OWNABLE.filter(i => s.owner[i] === p);
   const canAct = isHumanTurn();
@@ -772,7 +773,7 @@ function showLots() {
     const c = G.canBuild(s, p, i);
     const lv = s.level[i];
     const next = lv < G.RULES.maxLevel ? `${G.LEVEL_NAMES[lv + 1]}: rent ${money(W.rentAfterBuild(s, i))}` : 'Built as tall as it goes';
-    h += `<div class="pick" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
+    h += `<div class="pick" data-lot="${i}" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
       <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small>${G.buyoutPrice(s, i) != null ? `<small class="warn">Empty: a rival can make you sell for ${money(G.buyoutPrice(s, i))}</small>` : ''}</span>
       ${canAct && G.canSell(s, p, i) ? `<button class="secondary sell" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} back for ${money(G.sellValue(i))}">Sell ${money(G.sellValue(i))}</button>` : '<span></span>'}
       ${canAct && s.phase === 'manage' && lv < G.RULES.maxLevel ? `<button class="primary" data-build="${i}" ${c.ok ? '' : 'disabled'} aria-label="Build on ${esc(sp.name)} for ${money(G.buildCost(i))}" style="padding:6px 9px">+${money(G.buildCost(i))}</button>` : '<span></span>'}
@@ -781,7 +782,18 @@ function showLots() {
   if (!mine.length) h += '<p>No lots yet.</p>';
   h += `</div><p class="note">Cash: <b>${money(s.players[p].cash)}</b>${s.players[p].debt ? ` · owes the bank ${money(s.players[p].debt)}` : ''}</p>`;
   const body = openSheet(h);
-  body.querySelectorAll('[data-build]').forEach(b => b.addEventListener('click', async () => { closeSheet(); await doBuild(+b.dataset.build); showLots(); }));
+  if (at) {
+    $('sheet').scrollTop = at.scroll;
+    const row = body.querySelector(`[data-lot="${at.lot}"]`);
+    const b = row?.querySelector(`[data-${at.focus}]:not(:disabled)`);
+    if (row && !b) row.tabIndex = -1;
+    (b || row)?.focus({ preventScroll: true });
+  }
+  const again = (lot, focus) => ({ lot, focus, scroll: $('sheet').scrollTop });
+  body.querySelectorAll('[data-build]').forEach(b => b.addEventListener('click', async () => {
+    const i = +b.dataset.build, at = again(i, 'build');
+    closeSheet(); await doBuild(i); showLots(at);
+  }));
   // Selling asks twice: the first tap turns the button into "Sure? +$25" for a few seconds, and only a second tap sells.
   body.querySelectorAll('[data-sell]').forEach(b => {
     const i = +b.dataset.sell, label = [b.textContent, b.getAttribute('aria-label')];
@@ -796,7 +808,8 @@ function showLots() {
         return;
       }
       clearTimeout(timer);
-      closeSheet(); await doSell(i); showLots();
+      const at = again(i, 'sell');
+      closeSheet(); await doSell(i); showLots(at);
     });
   });
 }
