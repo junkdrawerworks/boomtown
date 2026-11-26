@@ -236,6 +236,11 @@ assert.deepEqual(await page.$$eval('#actions .row button', bs => bs.filter(b => 
   [], 'a button in the middle of the board wraps onto two lines at 375 px');
 await page.setViewportSize({ width: 390, height: 844 });
 
+// Dice emptied between turns forget what they showed: a roll of the same pair as the last one shown is still drawn.
+await scene("s.dice = [2, 5]; s.phase = 'move';");
+await page.evaluate(() => { const b = window.boomtown, s = b.state; s.dice = null; s.phase = 'roll'; b.render(); s.dice = [2, 5]; s.phase = 'move'; b.render(); });
+assert.equal(await page.$$eval('#dice .die', ds => ds.length), 2, 'a roll of the same pair as the last dice shown is not drawn');
+
 // A question about a lot rings the lot on the board, and its answers stay in view while the sheet scrolls, even on a
 // phone held sideways, without covering the end of the rent table.
 const RENT = `const at = Object.keys(s.owner).map(Number).find(i => s.owner[i] > 0 && s.level[i] === 0 && G.buyoutPrice(s, i) != null);

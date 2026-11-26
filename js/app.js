@@ -318,7 +318,8 @@ function preview(o) {
 
 function drawDice() {
   const el = $('dice');
-  if (!s.dice || s.phase === 'over') { el.innerHTML = ''; return; }
+  // Emptied, it forgets what it showed: the next roll may be the same pair, and must still be drawn.
+  if (!s.dice || s.phase === 'over') { el.innerHTML = ''; delete el.dataset.v; return; }
   if (el.dataset.v !== s.dice.join()) {
     el.innerHTML = s.dice.map(v => `<span class="die">${art.dieFace(v)}</span>`).join('');
     el.dataset.v = s.dice.join();
