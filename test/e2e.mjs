@@ -688,6 +688,31 @@ await scene("B.OWNABLE.forEach(i => { if (s.owner[i] === 0) s.owner[i] = 1; }); 
   assert.ok(moves.some(m => /Lumberyard: nothing to build at half price/.test(m)), `the move to the Lumberyard promises a build: ${moves}`);
 }
 
+// A move to a rival's empty lot whose owner you could make sell says so beside the rent, at its price, when you'll
+// have the cash on arriving (Payday on the way counts). Not in the final round, where a forced sale only costs worth.
+// At 375 px the buttons still fit the middle of the board.
+{
+  const sale = "for (const i of [1, 2, 25]) { s.owner[i] = 1; s.level[i] = 0; } s.owner[4] = 2; s.owner[26] = 2; s.land.mill = 2; s.players[0].debt = 0; s.players[0].pos = 24; s.players[0].detours = 2; s.dice = [1, 5]; s.phase = 'move';";
+  const moves = () => page.$$eval('.move-btn', bs => bs.map(b => b.querySelector('.what').textContent));
+  await scene(sale + 's.players[0].cash = 5000;');
+  const price = await page.evaluate(() => window.boomtown.G.buyoutPrice(window.boomtown.state, 25));
+  assert.ok((await moves()).includes(`Detour, one dieLookout Point: rent $${await page.evaluate(() => window.boomtown.G.rentFor(window.boomtown.state, 25))} to Rusty · or make them sell, $${price.toLocaleString('en-US')}`),
+    `a move to a rival's empty lot doesn't offer the forced sale: ${await moves()}`);
+  assert.equal((await moves()).filter(m => m.includes('or make them sell')).length, 3);
+  // Short of Mill Row's and Tannery Lane's price now, but not once Payday has paid on the way there; short of Lookout
+  // Point's even so: rent only there.
+  const mill = await page.evaluate(() => window.boomtown.G.buyoutPrice(window.boomtown.state, 2));
+  await scene(sale + `s.players[0].cash = ${mill - 100};`);
+  assert.deepEqual((await moves()).map(m => m.includes('or make them sell')), [true, false, true], 'a forced sale you cannot afford is offered, or Payday on the way is not counted');
+  await scene(sale + 's.players[0].cash = 5000; s.round = s.rounds;');
+  assert.equal((await moves()).some(m => m.includes('make them sell')), false, 'the final round offers a forced sale in the move preview');
+  await page.setViewportSize({ width: 375, height: 667 });
+  await scene(sale + 's.players[0].cash = 5000;');
+  assert.deepEqual(await page.$$eval('#center > *', (ks, c) => ks.filter(e => e.getClientRects().length).filter(e => { const b = e.getBoundingClientRect(); return b.top < c.top - 0.5 || b.bottom > c.bottom + 0.5; }).map(e => e.id),
+    await page.$eval('#center', e => e.getBoundingClientRect().toJSON())), [], 'three forced-sale moves spill out of the middle of the board at 375x667');
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);

@@ -284,14 +284,29 @@ function btn(text, cls, fn, main = false) {
   return b;
 }
 
-// Would this move get the Lumberyard's question? Only with something of yours that can go up at half price, with the
-// cash you'll have there (Payday on the way counts): so make the move on a copy of the game and see.
-function yardAsks(o) {
+// The game as it would be on arriving, with the cash you'll have there (Payday on the way counts, and a loan it pays
+// off): the move made on a copy of the game. Null for a detour with none left, which can't be taken anyway.
+function arrival(o) {
   try {
     const t = JSON.parse(JSON.stringify({ ...s, log: [], since: null }));
     G.move(t, o.steps, o.detour);
-    return t.pending?.kind === 'yard';
-  } catch { return true; } // a detour with none left: it can't be taken anyway
+    return t;
+  } catch { return null; }
+}
+
+// Would this move get the Lumberyard's question? Only with something of yours that can go up at half price.
+function yardAsks(o) {
+  const t = arrival(o);
+  return t ? t.pending?.kind === 'yard' : true;
+}
+
+// Could you make the owner sell you this lot, with the cash you'll have there? Not put in the preview in the final
+// round, where the sale costs half as much again as the land adds to your worth on Founders' Day (the townsfolk don't
+// force one then either); the rent sheet still offers it.
+function saleOffered(o) {
+  if (s.round === s.rounds) return null;
+  const t = arrival(o), q = t?.pending;
+  return q?.kind === 'rent' && q.buyout != null && q.buyout <= t.players[s.turn].cash ? q.buyout : null;
 }
 
 // What a move would land on, in a few words.
@@ -304,7 +319,10 @@ function preview(o) {
       const w = s.owner[o.to];
       if (w < 0) parts.push(`${esc(sp.name)}, for sale ${money(G.landValue(s, o.to))}`);
       else if (w === p) parts.push(`${esc(sp.name)}, yours`);
-      else parts.push(`${esc(sp.name)}: rent ${money(G.rentFor(s, o.to))} to ${nm(w)}`);
+      else {
+        const sale = saleOffered(o);
+        parts.push(`${esc(sp.name)}: rent ${money(G.rentFor(s, o.to))} to ${nm(w)}${sale != null ? ` · or make them sell, ${money(sale)}` : ''}`);
+      }
       break;
     }
     case 'payday': parts.push(`Payday, ${money(G.RULES.salary + G.RULES.landBonus)}`); break;
