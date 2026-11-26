@@ -219,8 +219,9 @@ const scene = async (setup = '', { seed = 11, round = 14 } = {}) => {
 // On a phone the players are one row of compact cards that keep the same rows, whatever the amounts: piece and name,
 // cash, then worth or what they owe. That leaves the board the whole width, standing as tall as the screen has room for
 // (taller than a square board by half again on a phone with height to spare), with the newest line of What happened
-// still on screen and no page to scroll.
-await scene('s.players[0].cash = 12345; s.players[2].cash = 0; s.players[2].debt = 1230; for (let k = 1; k <= 8; k++) s.log.push(`Rusty paid Dot $120 rent on Tannery Lane (${k}).`);');
+// still on screen and no page to scroll. Everyone holds two detours, as at the start of a game, and the cash keeps clear
+// of them.
+await scene('s.players[0].cash = 12345; s.players[1].cash = 1000; s.players[2].cash = 0; s.players[2].debt = 1230; s.players[3].cash = 8888; s.players.forEach(p => { p.detours = 2; }); for (let k = 1; k <= 8; k++) s.log.push(`Rusty paid Dot $120 rent on Tannery Lane (${k}).`);');
 for (const [width, height] of [[390, 844], [375, 667], [360, 780], [430, 932], [320, 568]]) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(200);
@@ -229,6 +230,11 @@ for (const [width, height] of [[390, 844], [375, 667], [360, 780], [430, 932], [
   assert.equal(new Set(chips.map(c => c.top)).size, 1, `the player cards are not in one row at ${width}px: ${JSON.stringify(chips)}`);
   assert.deepEqual(await page.$$eval('.chip .nm, .chip .sub, .chip .cash', es => es.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)), [], `card text is cut off at ${width}px`);
   assert.match(chips[2].text, /owes \$1,230/, 'a card with a loan says what is owed');
+  assert.deepEqual(await page.$$eval('.chip', cs => cs.filter(c => {
+    const r = document.createRange();
+    r.selectNodeContents(c.querySelector('.cash'));
+    return r.getBoundingClientRect().right > c.querySelector('.dt').getBoundingClientRect().left - 2;
+  }).map(c => c.querySelector('.cash').textContent)), [], `the cash runs into the detours at ${width}px`);
   const m = await page.evaluate(() => ({ board: document.querySelector('.board-wrap').getBoundingClientRect().toJSON(), units: document.getElementById('board').viewBox.baseVal.height,
     doc: document.documentElement.scrollHeight, newest: document.querySelector('#log li:first-child').getBoundingClientRect().bottom, log: document.getElementById('log').getBoundingClientRect().bottom }));
   if (width >= 360) assert.ok(m.board.width >= width - 16, `the board is ${m.board.width} px wide at ${width}x${height}, not the screen's width less its edges`);

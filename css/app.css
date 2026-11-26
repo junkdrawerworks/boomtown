@@ -200,16 +200,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chip .sub { grid-area: sub; font-size: 10.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .chip .debt { color: var(--bad); font-weight: 800; }
 .chip .worth { color: var(--muted); }
-.chip .dt { grid-area: dt; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-align: right; }
+/* The detours (up to two) stand one over the other beside the cash, so a four-figure cash keeps clear of them. */
+.chip .dt { grid-area: dt; font-size: 9px; line-height: 1; color: var(--muted); writing-mode: vertical-lr; text-orientation: upright; text-align: center; }
 /* Where a card is too narrow for "worth $1,680" (or "worth $13,520"), the amount alone, in the worth's grey (a screen reader hears it all),
    and a smaller piece and name. */
-@media (max-width: 399px) { .chip.long .lbl { display: none; } .chip.rich .cash { font-size: 12px; } }
+@media (max-width: 399px) { .chip.long .lbl { display: none; } .chip.rich .cash { font-size: 12px; } .chip .sub { font-size: 10px; } }
 @media (max-width: 359px) {
-  .chip { column-gap: 3px; }
+  .chip { column-gap: 3px; padding: 4px 4px 5px; }
   .chip .lbl { display: none; }
   .chip .tk svg { width: 15px; height: 15px; }
   .chip .nm { font-size: 11.5px; }
   .chip .sub { font-size: 9.5px; }
+  .chip .cash { font-size: 12.5px; }
   .chip.rich .cash { font-size: 11px; }
 }
 .log {
@@ -237,7 +239,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .chip .nm { font-size: 14px; }
   .chip .cash { font-size: 13.5px; text-align: right; }
   .chip .sub { font-size: 13px; }
-  .chip .dt { font-size: 10px; }
+  .chip .dt { font-size: 10px; line-height: normal; letter-spacing: 1px; writing-mode: horizontal-tb; text-align: right; }
   .log { height: auto; max-height: calc(var(--bh) - 330px); min-height: 120px; }
   #logBtn { display: none; }
 }
