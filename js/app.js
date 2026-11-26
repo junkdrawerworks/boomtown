@@ -16,6 +16,8 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode: play on without saving */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* as above */ } },
+  // Whether anything is kept at all: not in a browser that blocks it, or a sandboxed frame.
+  works() { try { localStorage.setItem('boomtown.check', '1'); localStorage.removeItem('boomtown.check'); return true; } catch { return false; } },
 };
 
 const WHO = [
@@ -990,7 +992,7 @@ function showRecords() {
   openSheet(`<h2 id="sheetTitle">Records</h2>
     <table class="facts"><tr><td>Games finished</td><td>${r.played}</td></tr><tr><td>Won by a person</td><td>${r.won}</td></tr>
     <tr><td>Best worth on Founders' Day</td><td>${r.best ? money(r.best) : '—'}</td></tr></table>
-    <p class="note">Kept on this device only.</p>`);
+    <p class="note">${store.works() ? 'Kept on this device only.' : "Not kept here: this browser isn't saving anything."}</p>`);
 }
 
 // ---------- Founders' Day ----------

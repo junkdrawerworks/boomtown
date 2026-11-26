@@ -98,6 +98,10 @@ assert.ok(await page.$eval('#startBtn', b => b.getBoundingClientRect().bottom <=
 await page.click('#rulesBtn');
 assert.match(await page.textContent('#sheet'), /Whoever goes later starts with a little more: \$50 for each seat after the first\./);
 await page.click('#sheet [data-close]');
+// Records are kept on this device.
+await page.click('#recordsBtn');
+assert.equal(await page.textContent('#sheet .note'), 'Kept on this device only.');
+await page.click('#sheet [data-close]');
 await page.click('#startBtn');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18');
@@ -1017,6 +1021,10 @@ if (await sheetOpen()) await answer();
   await dp.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError'); } }));
   await dp.goto(base);
   await dp.evaluate(() => document.fonts.ready);
+  // Records doesn't promise to keep what this browser won't.
+  await dp.click('#recordsBtn');
+  assert.equal(await dp.textContent('#sheet .note'), "Not kept here: this browser isn't saving anything.", 'Records says it keeps them with no storage');
+  await dp.click('#sheet [data-close]');
   const card = await dp.$eval('.title-card', el => el.getBoundingClientRect().toJSON());
   assert.ok(card.width <= 480 && card.left > 300, 'the title card is not centred on a desktop');
   assert.equal(await dp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'the title scrolls sideways on a desktop');
