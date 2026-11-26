@@ -313,6 +313,34 @@ await scene("s.phase = 'manage'; s.dice = [1, 2]; for (let k = 0; k < 150; k++) 
   await page.click('#sheet [data-close]');
 }
 
+// While the townsfolk play, a tap on a space opens it even mid-animation, and the open sheet holds them up until it's
+// closed. Leaving from the menu while they wait doesn't strand the game: carried on, they play on to your turn.
+await scene("s.phase = 'manage'; s.dice = [1, 2];");
+{
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForFunction(() => window.boomtown.busy === true && window.boomtown.state.turn !== 0, null, { timeout: 10000 });
+  await page.click('#board .cell[data-i="17"]');
+  assert.equal(await sheetOpen(), true, 'a tap while the townsfolk play is ignored');
+  const snap = () => page.evaluate(() => { const s = window.boomtown.state; return JSON.stringify([s.turn, s.phase, s.players.map(p => p.pos), s.owner, s.level]); });
+  await page.waitForTimeout(1200);
+  const held = await snap();
+  await page.waitForTimeout(1500);
+  assert.equal(await snap(), held, 'the townsfolk play on behind an open sheet');
+  await page.click('#sheet [data-close]');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+}
+await scene("s.phase = 'manage'; s.dice = [1, 2];");
+{
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForFunction(() => window.boomtown.state.turn !== 0, null, { timeout: 10000 });
+  await page.click('#menuBtn');
+  await page.waitForTimeout(800);
+  await page.click('#sheet [data-a="leave"]');
+  await page.click('#resumeBtn');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);

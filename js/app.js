@@ -331,6 +331,12 @@ async function run() {
     if (s.phase === 'roll') { note = whoseTurn(); render(); }
     await wait((s.phase === 'roll' ? 550 : s.phase === 'manage' ? 380 : 520) * pace());
     if (my !== gen) return;
+    // A sheet the person opened (a lot, the menu) holds the townsfolk until it's closed, so what it says stays true.
+    // Only one the person can close: the townsfolk never wait on a sheet nobody can shut.
+    while (!$('sheetWrap').hidden && $('scrim').onclick) {
+      await wait(150);
+      if (my !== gen) return;
+    }
     const ev = botStep(s);
     save();
     await play(ev, my);
@@ -601,7 +607,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheetW
 const lotFacts = i => W.lotFacts(s, i);
 
 function showSpace(i) {
-  if (!s || busy) return;
+  // While the townsfolk play, a space can be looked at any time (its sheet then has no buttons, and holds them up).
+  if (!s || (busy && isHumanTurn())) return;
   const sp = SPACES[i], p = s.turn, mine = s.owner[i] === p && isHumanTurn();
   let h;
   if (sp.type === 'lot' || sp.type === 'depot') {
@@ -916,5 +923,5 @@ if ('serviceWorker' in navigator && window.isSecureContext && !window.BOOMTOWN_A
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 // For tests and screenshots: window.boomtown gives the state.
-window.boomtown = { get state() { return s; }, G, start: startGame, render };
+window.boomtown = { get state() { return s; }, get busy() { return busy; }, G, start: startGame, render };
 showTitle();
