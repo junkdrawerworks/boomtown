@@ -14,10 +14,15 @@ const css = read('css/app.css')
   .replace('url(../fonts/unifraktur.woff2)', `url(data:font/woff2;base64,${b64('fonts/unifraktur.woff2')})`);
 
 const html = read('index.html');
-const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script type="module"'));
-// The charset comes first: the page holds ·, ☰ and ☷, and a viewer or a file opened from disk without it shows them as
-// mojibake. The board game has one palette in both light and dark: felt and paper. Tell the viewer so.
-const out = `<meta charset="utf-8">
+// The copy plays in another page's frame, so its links open beside it rather than in its place (app.js does the same
+// for the menu's links).
+const body = html.slice(html.indexOf('<body>') + 6, html.indexOf('<script type="module"'))
+  .replaceAll('<a href="https://junkdrawer.works/', '<a target="_blank" rel="noopener" href="https://junkdrawer.works/');
+// The doctype comes first, so a file opened from disk isn't drawn in quirks mode, then the charset: the page holds ·, ☰
+// and ☷, and a viewer or a file opened from disk without it shows them as mojibake. The board game has one palette in
+// both light and dark: felt and paper. Tell the viewer so.
+const out = `<!doctype html>
+<meta charset="utf-8">
 <title>Boomtown</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">

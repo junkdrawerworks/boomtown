@@ -98,10 +98,12 @@ assert.ok(await page.$eval('#startBtn', b => b.getBoundingClientRect().bottom <=
 await page.click('#rulesBtn');
 assert.match(await page.textContent('#sheet'), /Whoever goes later starts with a little more: \$50 for each seat after the first\./);
 await page.click('#sheet [data-close]');
-// Records are kept on this device.
+// Records are kept on this device; the links in the title's footer open in place here (only the one-file copy opens them
+// beside the game).
 await page.click('#recordsBtn');
 assert.equal(await page.textContent('#sheet .note'), 'Kept on this device only.');
 await page.click('#sheet [data-close]');
+assert.deepEqual(await page.$$eval('.jd-foot a', as => as.map(a => a.target)), ['', '']);
 await page.click('#startBtn');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18');

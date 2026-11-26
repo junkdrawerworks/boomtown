@@ -19,6 +19,9 @@ const store = {
   // Whether anything is kept at all: not in a browser that blocks it, or a sandboxed frame.
   works() { try { localStorage.setItem('boomtown.check', '1'); localStorage.removeItem('boomtown.check'); return true; } catch { return false; } },
 };
+// The one-file copy (scripts/build.mjs) plays inside another page's frame: its links open beside it, not in its place,
+// which would end the game held in memory there.
+const LINK_TARGET = window.BOOMTOWN_ARTIFACT ? ' target="_blank" rel="noopener"' : '';
 
 const WHO = [
   { id: 'you', label: 'A person' },
@@ -965,7 +968,7 @@ $('menuBtn').addEventListener('click', () => {
       <button class="secondary" data-a="leave">Leave the table</button>
     </div>
     <p class="note">Leaving keeps this game: carry on from the title screen.</p>
-    <footer class="jd-foot"><a href="https://junkdrawer.works/">Part of junkdrawer.works</a> <span aria-hidden="true">·</span> <a href="https://junkdrawer.works/privacy.html">Privacy</a></footer>`);
+    <footer class="jd-foot"><a href="https://junkdrawer.works/"${LINK_TARGET}>Part of junkdrawer.works</a> <span aria-hidden="true">·</span> <a href="https://junkdrawer.works/privacy.html"${LINK_TARGET}>Privacy</a></footer>`);
   // On the menu's own buttons, which go with the menu: the sheet's body stays, and a listener on it would stay too,
   // one more each time the menu opens, so a tap on Sound would toggle it once for every opening.
   body.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
