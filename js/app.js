@@ -616,22 +616,27 @@ function describe(e) {
 
 // ---------- sheets ----------
 let onSheetClose = null;
-// The focus goes to the sheet's first answer, and back where it was when the sheet closes.
+// While a sheet is open, everything behind it is inert: no tap, Tab or screen reader reaches it. The focus goes to the
+// sheet's first answer, or to its heading when there is nothing to answer, and back where it was when it closes.
 function openSheet(html, { light = false, closable = true, onClose = null } = {}) {
   if ($('sheetWrap').hidden) returnTo = document.activeElement;
   $('sheetBody').innerHTML = (closable ? '<button class="close" data-close aria-label="Close">✕</button>' : '') + html;
   $('sheetWrap').hidden = false;
+  $('app').inert = $('title').inert = true;
   $('sheetWrap').classList.toggle('light', light);
   onSheetClose = closable ? onClose : null;
   $('scrim').onclick = closable ? () => closeSheet(true) : null;
   $('sheet').scrollTop = 0;
-  const first = $('sheet').querySelector('.buttons button, .pick:not(:disabled), button:not(.close)');
-  (first || $('sheet')).focus({ preventScroll: true });
+  const first = $('sheet').querySelector('.buttons button:not(:disabled), .pick:not(:disabled), button:not(.close):not(:disabled)');
+  const head = $('sheetTitle');
+  if (!first && head) head.tabIndex = -1;
+  (first || head || $('sheet')).focus({ preventScroll: true });
   return $('sheetBody');
 }
 function closeSheet(byUser = false) {
   const was = !$('sheetWrap').hidden;
   $('sheetWrap').hidden = true;
+  $('app').inert = $('title').inert = false;
   const f = onSheetClose;
   onSheetClose = null;
   if (ringed != null) ring(null);
@@ -645,6 +650,21 @@ function closeSheet(byUser = false) {
 }
 $('sheetBody').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(true); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheetWrap').hidden && $('scrim').onclick) closeSheet(true); });
+// Tab and Shift+Tab go round the open sheet's buttons and links, never out of it.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab' || $('sheetWrap').hidden) return;
+  const all = [...$('sheet').querySelectorAll('button, a[href], input, select, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+  e.preventDefault();
+  if (!all.length) return;
+  const at = document.activeElement, k = all.indexOf(at);
+  let next;
+  if (k >= 0) next = all[(k + (e.shiftKey ? -1 : 1) + all.length) % all.length];
+  else { // on the sheet or its heading: the next one along from there
+    const after = all.filter(el => at.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    next = e.shiftKey ? all.filter(el => !after.includes(el)).pop() || all[all.length - 1] : after[0] || all[0];
+  }
+  next.focus();
+});
 
 const lotFacts = (i, o) => W.lotFacts(s, i, o);
 
@@ -908,7 +928,7 @@ function finish() {
   const rows = st.map(x => `<li>${art.tokenSvg(s.players[x.p].token, 28)}<span class="nm">${nm(x.p)}<small>${money(x.cash)} cash · ${money(x.land)} land · ${money(x.buildings)} buildings</small></span><span class="w">${money(x.worth)}</span></li>`).join('');
   const body = openSheet(`<div class="gazette"><div class="mast">The Boomtown Gazette</div>
       <div class="dateline"><span>Founders' Day</span><span>Special edition</span></div>
-      <div class="head">${head}</div></div>
+      <div class="head" id="sheetTitle">${head}</div></div>
     <ol class="standings">${rows}</ol>
     <h3>Worth, round by round</h3>${chart()}
     <div class="buttons"><button class="primary" data-a="again">Play again</button><button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true });
@@ -934,10 +954,12 @@ function chart() {
   let g = `<line x1="${pad}" y1="${y(0)}" x2="${W - 8}" y2="${y(0)}" stroke="#0003"/>`;
   g += `<text x="${pad - 4}" y="${y(max) + 4}" text-anchor="end">${money(Math.round(max / 100) * 100)}</text><text x="${pad - 4}" y="${y(0) + 4}" text-anchor="end">$0</text>`;
   g += `<text x="${pad}" y="${H - 2}">Start</text><text x="${W - 8}" y="${H - 2}" text-anchor="end">Round ${n}</text>`;
+  // Read out, the lines come down to where each player ended, richest first.
+  const ended = G.standings(s).map((x, k) => `${esc(s.players[x.p].name)}${k ? '' : ' ended'} on ${money(x.worth)}`).join(', ');
   s.players.forEach((p, q) => {
     g += `<polyline fill="none" stroke="${colorOf(q)}" stroke-width="3" stroke-linejoin="round" points="${p.history.map((v, k) => `${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}"/>`;
   });
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Each player's worth, round by round">${g}</svg>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Each player's worth, round by round. ${ended}.">${g}</svg>`;
 }
 
 // ---------- fitting the board to the screen ----------

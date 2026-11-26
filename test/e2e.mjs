@@ -53,6 +53,14 @@ const until = async (ok, ms, what) => {
   for (const end = Date.now() + ms; !(await ok());) { assert.ok(Date.now() < end, what); await new Promise(r => setTimeout(r, 100)); }
 };
 
+// The page as a screen reader gets it: Chromium's accessibility tree.
+const axTree = async p => {
+  const c = await p.context().newCDPSession(p);
+  const { nodes } = await c.send('Accessibility.getFullAXTree');
+  await c.detach();
+  return nodes;
+};
+
 const browser = await pw.chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
 const page = await ctx.newPage();
@@ -147,10 +155,20 @@ await page.waitForSelector('.standings li', { timeout: 10000 });
 assert.equal(await page.$$eval('.standings li', l => l.length), 2, "Founders' Day ranks both players");
 assert.match(await page.textContent('#sheet .gazette .head'), /richest in Boomtown/i);
 assert.equal(await page.isVisible('#sheet .chart'), true);
+// Founders' Day is read out by its headline, its ✕ isn't covered by the Gazette, and the chart says where each player
+// ended.
+{
+  const dialog = (await axTree(page)).find(n => n.role?.value === 'dialog' && !n.ignored);
+  assert.match(dialog?.name?.value || '', /richest in Boomtown/i, "Founders' Day has no name for a screen reader");
+  assert.equal(await page.$eval('#sheet .close', c => { const r = c.getBoundingClientRect(); return document.elementFromPoint(r.right - 6, r.top + r.height / 2)?.closest('.close') === c; }), true,
+    "the Gazette covers Founders' Day's ✕");
+  assert.match(await page.getAttribute('#sheet .chart', 'aria-label'), /round by round\. (You|Mabel) ended on \$[\d,]+, (You|Mabel) on \$[\d,]+\.$/, "the chart doesn't say where each player ended");
+}
 await page.click('#sheet [data-a="again"]');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18', 'Play again starts a new game');
 assert.equal(await sheetOpen(), false, "Founders' Day stays open over the new game");
+assert.equal(await page.$eval('#app', el => el.inert), false, "the new game is inert after Founders' Day's sheet");
 
 // On a phone held upright the board stands taller than it is wide, and the middle has room for the buttons.
 const box = await page.$eval('.board-wrap', el => el.getBoundingClientRect().toJSON());
@@ -417,7 +435,8 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
 
 // Played with the keyboard alone, the focus is always on the next step after each one: Roll the dice, then the first
 // move, then the question's answer, then End turn, and Roll the dice again when the turn comes back. It's never dropped
-// on the page itself, and Tab goes from the menu to the buttons before the spaces.
+// on the page itself. Tab goes from the menu to the buttons, then the spaces; Enter on a space opens it, and Tab stays
+// inside the open sheet (the page behind it is inert) until Escape puts the focus back on the space.
 {
   const kc = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
   const kp = await kc.newPage();
@@ -457,6 +476,21 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
     await kp.keyboard.press('Enter');
     await kp.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
   }
+  // Tab on from the buttons to the spaces, Enter on one, and round the sheet that opens.
+  for (let k = 0; k < 4 && (await focused()).cell == null; k++) await kp.keyboard.press('Tab');
+  const cell = (await focused()).cell;
+  assert.notEqual(cell, null, 'Tab from the buttons does not go on to the spaces');
+  await kp.keyboard.press('Enter');
+  assert.equal((await st()).sheet, true, 'Enter on a space does not open it');
+  assert.equal(await kp.evaluate(() => document.activeElement.id), 'sheetTitle', "a space's sheet does not put the focus on its name");
+  for (let k = 0; k < 4; k++) {
+    await kp.keyboard.press(k % 2 ? 'Shift+Tab' : 'Tab');
+    assert.equal((await focused()).sheet, true, `Tab ${k + 1} goes out of the open sheet: ${JSON.stringify(await focused())}`);
+  }
+  assert.equal(await kp.$eval('#app', el => el.inert), true, 'the page behind an open sheet is not inert');
+  await kp.keyboard.press('Escape');
+  assert.equal((await focused()).cell, cell, 'closing the sheet does not put the focus back on the space');
+  assert.equal(await kp.$eval('#app', el => el.inert), false, 'the page stays inert after the sheet closes');
   // Leave the table from the menu: the focus goes to Carry on, and carrying on puts it on Roll the dice.
   await kp.click('#menuBtn');
   await kp.click('#sheet [data-a="leave"]');
@@ -464,6 +498,7 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
   await kp.keyboard.press('Enter');
   await kp.waitForSelector('#actions button:has-text("Roll the dice")');
   assert.equal((await focused()).text, 'Roll the dice', 'carrying on does not put the focus on Roll the dice');
+  assert.equal(await kp.$eval('#app', el => el.inert), false, 'the game is inert after carrying on');
   await kc.close();
 }
 
