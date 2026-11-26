@@ -4,6 +4,7 @@
 import { SPACES, DISTRICT, N, cellRect, SIZE } from './board.js';
 import { landValue, rentFor, LEVEL_NAMES, RULES } from './game.js';
 import * as art from './art.js';
+import { Whose } from './words.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 export const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the person asked for less motion
@@ -163,13 +164,13 @@ export function createBoard(svg, { onCell } = {}) {
         const lv = s.level[i];
         drawing = o < 0 ? art.forSale() : lv ? art.BUILDINGS[lv](color) : art.sold(color);
         tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
-        label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, ${usd(landValue(s, i))}.` : `${s.players[o].name}'s ${LEVEL_NAMES[lv].toLowerCase()}, rent ${usd(rentFor(s, i))}.`);
+        label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, ${usd(landValue(s, i))}.` : `${Whose(s.players[o])} ${LEVEL_NAMES[lv].toLowerCase()}, rent ${usd(rentFor(s, i))}.`);
         break;
       }
       case 'depot':
         drawing = art.depot(color);
         tag = o >= 0 ? pill(usd(rentFor(s, i)), deepen(color), r.w) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
-        label = `${sp.name}. ` + (o < 0 ? `For sale, ${usd(sp.price)}.` : `${s.players[o].name}'s, rent ${usd(rentFor(s, i))}.`);
+        label = `${sp.name}. ` + (o < 0 ? `For sale, ${usd(sp.price)}.` : `${Whose(s.players[o])} depot, rent ${usd(rentFor(s, i))}.`);
         break;
       case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
       case 'yard': drawing = art.lumber; tag = `<text class="tiny">BUILD ½</text>`; label = 'Lumberyard: build one level at half price.'; break;

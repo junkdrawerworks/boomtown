@@ -7,12 +7,12 @@
 // refreshed only when a page that loads it is visited online, and the copy could mix two releases. So FILES is a
 // fingerprint of every file in SHELL: change any of them and test/e2e.mjs fails until FILES is changed to match (it
 // says what to), which changes this file, so every copy is made whole again at once.
-const CACHE = 'boomtown-v1'; // bump the number when the file list changes
-const FILES = '3880693e'; // test/e2e.mjs checks this
+const CACHE = 'boomtown-v2'; // bump the number when the file list changes
+const FILES = 'e28db8a3'; // test/e2e.mjs checks this
 const SHELL = [
   './', 'index.html', 'icon.svg', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
   'css/app.css',
-  'js/app.js', 'js/art.js', 'js/board.js', 'js/bots.js', 'js/cards.js', 'js/game.js', 'js/sound.js', 'js/view.js',
+  'js/app.js', 'js/art.js', 'js/board.js', 'js/bots.js', 'js/cards.js', 'js/game.js', 'js/sound.js', 'js/view.js', 'js/words.js',
   'fonts/alfa-slab-one.woff2', 'fonts/libre-franklin.woff2', 'fonts/unifraktur.woff2',
 ];
 

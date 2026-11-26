@@ -260,6 +260,17 @@ assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tappe
 await page.click('#sheet [data-close]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 0, 'the ring stays after the sheet closes');
 
+// The person playing the townsfolk alone is called You, and the game talks to them: a lot of theirs is "Your house",
+// on the board and on its sheet, never "You's house" or "You owns".
+await scene();
+{
+  const i = await page.evaluate(() => { const s = window.boomtown.state; return Object.keys(s.owner).map(Number).find(j => s.owner[j] === 0 && s.level[j] > 0); });
+  assert.match(await page.getAttribute(`#board .cell[data-i="${i}"]`, 'aria-label'), /\. Your (house|shop|block), rent \$/, "a lot of yours is read out as You's");
+  await page.click(`#board .cell[data-i="${i}"]`);
+  assert.doesNotMatch(await page.textContent('#sheet'), /You's|You owns/, "your lot's sheet says You's");
+  await page.click('#sheet [data-close]');
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);
@@ -375,6 +386,20 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
   await dp.waitForSelector('#actions button:has-text("Roll the dice")');
   assert.equal(await dp.textContent('#round'), round, 'carrying on did not go back to the same game');
   await desk.close();
+}
+
+// At a shared table nobody is called You: a person left with that name goes by their seat, on the title and in play.
+{
+  const pp = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  const p1 = await pp.newPage();
+  p1.on('pageerror', e => problems.push(e.message));
+  await p1.addInitScript(() => localStorage.setItem('boomtown.prefs', JSON.stringify({ speed: 'fast', sound: false, len: 'short', seats: [{ who: 'you', name: 'You' }, { who: 'you', name: 'Player 2' }, { who: 'none' }, { who: 'none' }] })));
+  await p1.goto(base);
+  assert.equal(await p1.inputValue('#seats input >> nth=0'), '', 'the title still names the first person You');
+  await p1.click('#startBtn');
+  await p1.waitForSelector('#actions button:has-text("Roll the dice")');
+  assert.equal(await p1.textContent('.chip .nm >> nth=0'), 'Player 1', 'a person at a shared table is called You');
+  await pp.close();
 }
 
 // Pass and play: two people take turns on one phone, each told when it's their go, through the real buttons.

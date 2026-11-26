@@ -5,6 +5,7 @@ import * as G from '../js/game.js';
 import { botStep, BOTS } from '../js/bots.js';
 import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS } from '../js/board.js';
 import { CARDS } from '../js/cards.js';
+import * as W from '../js/words.js';
 
 const seats = (n = 2) => Array.from({ length: n }, (_, k) => ({ name: 'P' + k, kind: 'human', token: k }));
 const at = name => SPACES.findIndex(s => s.name === name);
@@ -200,4 +201,28 @@ test('a saved game carries on exactly as if it had never stopped', () => {
   while (a.phase !== 'over') botStep(a);
   while (b.phase !== 'over') botStep(b);
   assert.deepEqual(G.standings(a), G.standings(b));
+});
+
+test('who is who in a sentence: the person playing alone is You, everyone else goes by name', () => {
+  const you = { name: 'You' }, rusty = { name: 'Rusty' };
+  assert.deepEqual([W.who(you), W.Who(you), W.whose(you), W.Whose(you), W.agree(you, 'own', 'owns')], ['you', 'You', 'your', 'Your', 'own']);
+  assert.deepEqual([W.who(rusty), W.Who(rusty), W.whose(rusty), W.Whose(rusty), W.agree(rusty, 'own', 'owns')], ['Rusty', 'Rusty', "Rusty's", "Rusty's", 'owns']);
+});
+
+test("a lot's sheet talks to You as you: no \"You's house\", no \"You owns\"", () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Rusty', kind: 'bot', bot: 'rusty', token: 1 }], seed: 5 });
+  const [a, b, c] = LOTS_IN.mill;
+  for (const i of [a, b, c]) s.owner[i] = 0;
+  s.level[a] = 1;
+  const mine = W.lotFacts(s, a);
+  assert.doesNotMatch(mine, /You's|You owns/);
+  assert.match(mine, /Your house\. Rent is/);
+  assert.match(mine, /You own all of Mill Row/);
+  assert.match(W.lotFacts(s, b), /Your empty lot\./);
+  for (const i of [a, b, c]) s.owner[i] = 1;
+  const theirs = W.lotFacts(s, a);
+  assert.match(theirs, /Rusty's house\. Rent is/);
+  assert.match(theirs, /Rusty owns all of Mill Row/);
+  s.owner[DEPOTS[0]] = 0;
+  assert.match(W.lotFacts(s, DEPOTS[0]), /Your depot\./);
 });

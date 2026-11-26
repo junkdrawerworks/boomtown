@@ -8,6 +8,7 @@ import { BOTS, botStep } from './bots.js';
 import { createBoard, calm } from './view.js';
 import * as art from './art.js';
 import { sfx, setSound, soundOn } from './sound.js';
+import * as W from './words.js';
 
 const $ = id => document.getElementById(id);
 const KEY = 'boomtown.game', PREFS = 'boomtown.prefs', RECORDS = 'boomtown.records';
@@ -36,16 +37,20 @@ const view = createBoard($('board'), { onCell: i => showSpace(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const pace = () => (prefs.speed === 'fast' ? 0.35 : 1);
-const money = n => (n < 0 ? `−$${(-n).toLocaleString('en-US')}` : `$${n.toLocaleString('en-US')}`);
-const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const { money, esc } = W;
 const nm = p => esc(s.players[p].name);
-const poss = p => (s.players[p].name === 'You' ? 'your' : `${nm(p)}'s`);
-const obj = p => (s.players[p].name === 'You' ? 'you' : nm(p)); // a player in the middle of a sentence
+// A player in a sentence, by seat: 'you' or 'Rusty' in the middle of one, 'You' or 'Rusty' at the start, and 'your' or
+// "Rusty's". Only the person playing the townsfolk alone is called You (see words.js).
+const who = p => esc(W.who(s.players[p]));
+const Who = p => esc(W.Who(s.players[p]));
+const whose = p => esc(W.whose(s.players[p]));
+const Whose = p => esc(W.Whose(s.players[p]));
+const agree = (p, you, they) => W.agree(s.players[p], you, they);
 const colorOf = p => art.PLAYER_COLORS[s.players[p].token];
 const save = () => { if (s) store.set(KEY, s); };
 const humans = () => s.players.filter(p => p.kind === 'human').length;
 const isHumanTurn = () => s && s.phase !== 'over' && G.current(s).kind === 'human';
-const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
+const { swatch } = W;
 const ring = i => { ringed = i; if (s) view.focus(i); };
 
 // ---------- the title screen ----------
@@ -65,6 +70,7 @@ function showTitle() {
 function drawSeats() {
   const el = $('seats');
   el.innerHTML = '';
+  const people = prefs.seats.filter(x => x.who === 'you').length;
   prefs.seats.forEach((seat, k) => {
     const row = document.createElement('div');
     row.className = 'seat' + (seat.who === 'none' ? ' off' : '');
@@ -73,7 +79,7 @@ function drawSeats() {
       <select aria-label="Seat ${k + 1}, the ${art.TOKEN_NAMES[k]}">${WHO.map(w =>
         `<option value="${w.id}"${w.id === seat.who ? ' selected' : ''}${BOTS[w.id] && taken.includes(w.id) ? ' disabled' : ''}>${w.label}</option>`).join('')}</select>
       ${seat.who === 'you'
-        ? `<input aria-label="Name for seat ${k + 1}" maxlength="14" autocomplete="off" placeholder="Player ${k + 1}" value="${esc(seat.name || '')}">`
+        ? `<input aria-label="Name for seat ${k + 1}" maxlength="14" autocomplete="off" placeholder="Player ${k + 1}" value="${people > 1 && seat.name === 'You' ? '' : esc(seat.name || '')}">`
         : `<span class="line">${BOTS[seat.who] ? BOTS[seat.who].line : 'This seat is empty.'}</span>`}`;
     const sel = row.querySelector('select'), inp = row.querySelector('input');
     sel.addEventListener('change', () => {
@@ -122,6 +128,9 @@ function breakGround() {
     if (x.who === 'you') return { name: x.name || `Player ${x.token + 1}`, kind: 'human', token: x.token };
     return { name: BOTS[x.who].name, kind: 'bot', bot: x.who, token: x.token };
   });
+  // With more than one person at the table, the game can't talk to one of them as You: a person still called You
+  // goes by their seat instead, 'Player 1'.
+  if (seats.filter(x => x.kind === 'human').length > 1) for (const x of seats) if (x.kind === 'human' && x.name === 'You') x.name = `Player ${x.token + 1}`;
   // Two people with the same name would be confusing: number them.
   const seen = {};
   for (const x of seats) { seen[x.name] = (seen[x.name] || 0) + 1; if (seen[x.name] > 1) x.name += ` ${seen[x.name]}`; }
@@ -525,14 +534,14 @@ function describe(e) {
       if (e.why === 'an inheritance') return `${nm(e.p)} inherited ${money(e.amount)}.`;
       return null;
     case 'pay':
-      if (typeof e.to === 'number') return e.why.startsWith('rent') ? `${nm(e.from)} paid ${obj(e.to)} ${money(e.amount)} ${esc(e.why)}.` : null;
+      if (typeof e.to === 'number') return e.why.startsWith('rent') ? `${nm(e.from)} paid ${who(e.to)} ${money(e.amount)} ${esc(e.why)}.` : null;
       if (e.to === 'kitty') return `${nm(e.from)} paid ${money(e.amount)} for ${esc(e.why)}, into the kitty.`;
       return null;
-    case 'loan': return `The bank lent ${obj(e.p)} ${money(e.amount)}.`;
-    case 'repaid': return `${money(e.amount)} went to paying off ${poss(e.p)} loan.`;
-    case 'interest': return `${money(e.amount)} interest went on ${poss(e.p)} loan.`;
+    case 'loan': return `The bank lent ${who(e.p)} ${money(e.amount)}.`;
+    case 'repaid': return `${money(e.amount)} went to paying off ${whose(e.p)} loan.`;
+    case 'interest': return `${money(e.amount)} interest went on ${whose(e.p)} loan.`;
     case 'buy': return `${nm(e.p)} bought ${sp(e.at)} for ${money(e.price)}.`;
-    case 'buyout': return `${nm(e.p)} made ${obj(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
+    case 'buyout': return `${nm(e.p)} made ${who(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
     case 'build': return `${nm(e.p)} built a ${G.LEVEL_NAMES[e.level].toLowerCase()} on ${sp(e.at)}.`;
     case 'sell': return `${nm(e.p)} sold a ${G.LEVEL_NAMES[e.level + 1].toLowerCase()} on ${sp(e.at)} back for ${money(e.refund)}.`;
     case 'card': return `The Gazette: ${esc(CARD[e.card].head)}.`;
@@ -567,37 +576,7 @@ function closeSheet(byUser = false) {
 $('sheetBody').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(true); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheetWrap').hidden && $('scrim').onclick) closeSheet(true); });
 
-function rentTable(i) {
-  const sp = SPACES[i], cur = s.level[i];
-  if (sp.type === 'depot') {
-    return `<table class="facts"><tr><td>Rent with one depot</td><td>${money(G.RULES.depotRent[1])}</td></tr><tr><td>Rent with both</td><td>${money(G.RULES.depotRent[2])}</td></tr></table>`;
-  }
-  const o = s.owner[i];
-  const rows = G.LEVEL_NAMES.map((name, lv) => {
-    const rent = o >= 0 ? G.rentFor(s, i, lv) : Math.round(G.landValue(s, i) * G.RULES.rent[lv] / 5) * 5;
-    return `<tr class="${o >= 0 && lv === cur ? 'here' : ''}"><td>Rent, ${name.toLowerCase()}${lv ? ` (+${money(G.buildCost(i))})` : ''}</td><td>${money(rent)}</td></tr>`;
-  }).join('');
-  return `<table class="facts">${rows}</table>`;
-}
-
-function lotFacts(i) {
-  const sp = SPACES[i], d = sp.district;
-  let h = `<div class="kicker">${d ? `${swatch(d)} ${DISTRICT[d].name}` : 'Railway'}</div><h2 id="sheetTitle">${esc(sp.name)}</h2>`;
-  const o = s.owner[i];
-  h += `<p>${o < 0 ? `For sale at ${money(G.landValue(s, i))}.` : `${nm(o)}'s ${sp.type === 'lot' ? G.LEVEL_NAMES[s.level[i]].toLowerCase() : 'depot'}. Rent is <b>${money(G.rentFor(s, i))}</b>.`}</p>`;
-  h += rentTable(i);
-  if (d) {
-    const lots = LOTS_IN[d];
-    const owners = lots.map(j => s.owner[j]);
-    const built = lots.filter(j => s.level[j] > 0).length;
-    h += `<p class="note">Land here is at ${Math.round(s.land[d] * 100)}% of its first price. Every building on ${DISTRICT[d].name} raises the land and adds a quarter to the rent of the lots beside it.`;
-    if (o >= 0 && owners.every(x => x === o)) h += ` ${nm(o)} owns all of ${DISTRICT[d].name}, so rent is up and blocks can go up.`;
-    else h += ` Own all three to build blocks.`;
-    if (built) h += ` ${built} of 3 lots built on.`;
-    h += '</p>';
-  }
-  return h;
-}
+const lotFacts = i => W.lotFacts(s, i);
 
 function showSpace(i) {
   if (!s || busy) return;
@@ -631,7 +610,7 @@ function showLots() {
   const p = s.turn;
   const mine = OWNABLE.filter(i => s.owner[i] === p);
   const canAct = isHumanTurn();
-  let h = `<h2 id="sheetTitle">${humans() > 1 || s.players[p].name !== 'You' ? `${nm(p)}'s lots` : 'Your lots'}</h2>`;
+  let h = `<h2 id="sheetTitle">${Whose(p)} lots</h2>`;
   h += s.phase === 'manage' ? '<p class="note">Build as much as you can afford. A block needs the whole district.</p>' : '<p class="note">You can build after you move. Selling a building back gets half of what it cost.</p>';
   h += '<div class="pick-list">';
   for (const i of mine) {
@@ -675,12 +654,12 @@ function askDecision() {
       const short = Math.max(0, q.rent - pl.cash);
       const sp = SPACES[q.at];
       h = lotFacts(q.at) + '<div class="buttons stick">';
-      h += `<button class="primary" data-c="pay">Pay ${nm(q.owner)} ${money(q.rent)}</button>`;
+      h += `<button class="primary" data-c="pay">Pay ${who(q.owner)} ${money(q.rent)}</button>`;
       if (short) h += `<p class="note">You're ${money(short)} short. The bank lends the rest, and adds 10% each time you pass Payday. Money coming in pays it off first.</p>`;
       if (q.buyout != null) {
         const can = pl.cash >= q.buyout;
-        h += `<button class="secondary" data-c="buyout" ${can ? '' : 'disabled'}>Make ${nm(q.owner)} sell it to you: ${money(q.buyout)}</button>
-          <p class="note">Nothing is built here and ${nm(q.owner)} doesn't own ${sp.type === 'depot' ? 'both depots' : `all of ${DISTRICT[sp.district].name}`}, so ${nm(q.owner)} has to sell at ${G.RULES.buyout} times the land value. You pay no rent.</p>`;
+        h += `<button class="secondary" data-c="buyout" ${can ? '' : 'disabled'}>Make ${who(q.owner)} sell it to you: ${money(q.buyout)}</button>
+          <p class="note">Nothing is built here and ${who(q.owner)} ${agree(q.owner, "don't", "doesn't")} own ${sp.type === 'depot' ? 'both depots' : `all of ${DISTRICT[sp.district].name}`}, so ${who(q.owner)} ${agree(q.owner, 'have', 'has')} to sell at ${G.RULES.buyout} times the land value. You pay no rent.</p>`;
       }
       h += '</div>';
       break;
@@ -836,7 +815,7 @@ function finish() {
   }
   s.recorded = true;
   save();
-  const head = winner.name === 'You' ? 'You are the richest in Boomtown' : `${esc(winner.name)} is the richest in Boomtown`;
+  const head = `${Who(st[0].p)} ${agree(st[0].p, 'are', 'is')} the richest in Boomtown`;
   const rows = st.map(x => `<li>${art.tokenSvg(s.players[x.p].token, 28)}<span class="nm">${nm(x.p)}<small>${money(x.cash)} cash · ${money(x.land)} land · ${money(x.buildings)} buildings</small></span><span class="w">${money(x.worth)}</span></li>`).join('');
   const body = openSheet(`<div class="gazette"><div class="mast">The Boomtown Gazette</div>
       <div class="dateline"><span>Founders' Day</span><span>Special edition</span></div>
