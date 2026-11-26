@@ -341,6 +341,17 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');
 }
 
+// A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
+await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
+{
+  await page.click('#actions button:has-text("Your lots")');
+  assert.match(await page.textContent('#sheet'), /Tannery Lane.*Empty: a rival can make you sell for \$\d+/, 'Your lots does not warn about a forced sale');
+  await page.click('#sheet [data-close]');
+  await page.click(`#board .cell[data-i="${await page.evaluate(() => window.bare)}"]`);
+  assert.match(await page.textContent('#sheet'), /A rival who lands here can make you sell it for \$\d+\. Build on it, or own the whole district, to keep it\./, "your lot's sheet does not warn about a forced sale");
+  await page.click('#sheet [data-close]');
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);

@@ -236,3 +236,20 @@ test("a block's reason names the lot it's missing, and who has it", () => {
   s.owner[b] = 0;
   assert.equal(G.canBuild(s, 0, a).reason, `A block needs all three Mill Row lots. ${name(c)} is still for sale.`);
 });
+
+test("a person's empty lot warns that a rival landing there can force a sale, and stops once it can't", () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Rusty', kind: 'bot', bot: 'rusty', token: 1 }], seed: 6 });
+  const [a, b, c] = LOTS_IN.mill;
+  s.owner[a] = 0;
+  const warned = i => /A rival who lands here can make you sell it for \$\d+\. Build on it, or own the whole district, to keep it\./.test(W.lotFacts(s, i, { warn: true }));
+  assert.equal(warned(a), true);
+  assert.equal(W.lotFacts(s, a).includes('A rival'), false, 'only the owner-side sheet warns');
+  s.owner[b] = 0; s.owner[c] = 0;
+  assert.equal(warned(a), false, 'the whole district keeps it');
+  s.owner[c] = -1; s.level[a] = 1;
+  assert.equal(warned(a), false, 'a house keeps it');
+  s.level[a] = 0; s.owner[a] = 1;
+  assert.equal(W.lotFacts(s, a, { warn: true }).includes('A rival'), false, "the townsfolk's lots don't warn");
+  s.owner[DEPOTS[0]] = 0;
+  assert.match(W.lotFacts(s, DEPOTS[0], { warn: true }), /make you sell it for \$\d+\. Own both depots to keep it\./);
+});

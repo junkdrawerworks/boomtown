@@ -604,7 +604,7 @@ function closeSheet(byUser = false) {
 $('sheetBody').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(true); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheetWrap').hidden && $('scrim').onclick) closeSheet(true); });
 
-const lotFacts = i => W.lotFacts(s, i);
+const lotFacts = (i, o) => W.lotFacts(s, i, o);
 
 function showSpace(i) {
   // While the townsfolk play, a space can be looked at any time (its sheet then has no buttons, and holds them up).
@@ -612,7 +612,7 @@ function showSpace(i) {
   const sp = SPACES[i], p = s.turn, mine = s.owner[i] === p && isHumanTurn();
   let h;
   if (sp.type === 'lot' || sp.type === 'depot') {
-    h = lotFacts(i);
+    h = lotFacts(i, { warn: true });
     if (mine && sp.type === 'lot') {
       const c = G.canBuild(s, p, i);
       const b = [];
@@ -645,14 +645,15 @@ function showLots() {
   for (const i of mine) {
     const sp = SPACES[i];
     if (sp.type === 'depot') {
-      h += `<div class="pick" style="cursor:default"><span class="swatch" style="background:#7d6b5a"></span><span>${esc(sp.name)}<small>Rent ${money(G.rentFor(s, i))}</small></span><span></span></div>`;
+      const price = G.buyoutPrice(s, i);
+      h += `<div class="pick" style="cursor:default"><span class="swatch" style="background:#7d6b5a"></span><span>${esc(sp.name)}<small>Rent ${money(G.rentFor(s, i))}</small>${price != null ? `<small class="warn">A rival can make you sell for ${money(price)}</small>` : ''}</span><span></span></div>`;
       continue;
     }
     const c = G.canBuild(s, p, i);
     const lv = s.level[i];
     const next = lv < G.RULES.maxLevel ? `${G.LEVEL_NAMES[lv + 1]}: rent ${money(G.rentFor(s, i, lv + 1))}` : 'Built as tall as it goes';
     h += `<div class="pick" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
-      <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small></span>
+      <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small>${G.buyoutPrice(s, i) != null ? `<small class="warn">Empty: a rival can make you sell for ${money(G.buyoutPrice(s, i))}</small>` : ''}</span>
       ${canAct && G.canSell(s, p, i) ? `<button class="secondary sell" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} back for ${money(G.sellValue(i))}">Sell ${money(G.sellValue(i))}</button>` : '<span></span>'}
       ${canAct && s.phase === 'manage' && lv < G.RULES.maxLevel ? `<button class="primary" data-build="${i}" ${c.ok ? '' : 'disabled'} aria-label="Build on ${esc(sp.name)} for ${money(G.buildCost(i))}" style="padding:6px 9px">+${money(G.buildCost(i))}</button>` : '<span></span>'}
     </div>`;

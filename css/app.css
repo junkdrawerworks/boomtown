@@ -220,6 +220,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pick:disabled { opacity: .45; }
 .pick .swatch { width: 14px; height: 14px; }
 .pick small { display: block; color: var(--muted); font-size: 12px; }
+.pick small.warn, .sheet .note.warn { color: var(--brick-deep); }
 .pick .cost { font-weight: 800; font-variant-numeric: tabular-nums; }
 .pick .sell { padding: 6px 9px; font-size: 14px; white-space: nowrap; }
 .pick .sell.sure { background: #fff; color: var(--brick-deep); border-color: var(--brick-deep); box-shadow: 0 3px 0 var(--brick-deep); }
