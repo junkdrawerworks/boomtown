@@ -256,6 +256,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #resumeBtn { margin-top: 0; margin-bottom: 4px; }
 #resumeBtn .what { display: block; font-size: 13px; font-weight: 600; opacity: .9; }
 #resumeBtn .what:empty { display: none; }
+.title-card .hint { margin: -2px 0 10px; font-size: 13px; line-height: 1.35; color: var(--muted); }
 .seats { display: flex; flex-direction: column; gap: 6px; }
 .seat { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 8px; align-items: center; }
 .seat select, .seat input {

@@ -819,6 +819,7 @@ function showRules() {
       <li><b>Land on a lot for sale</b> and you can buy it.</li>
       <li><b>Land on someone else's lot</b> and you pay them rent. If nothing is built on it and they don't own the whole district, you can make them sell it to you instead, for ${G.RULES.buyout} times the land value.</li>
       <li><b>Then build</b> on any of your lots: a house, then a shop, then a block. A block needs all three lots in the district.</li>
+      <li><b>Whoever goes later starts with a little more:</b> ${money(G.RULES.seatBonus)} for each seat after the first.</li>
     </ul>
     <h3>How the town grows</h3>
     <ul>

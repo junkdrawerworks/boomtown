@@ -83,6 +83,13 @@ assert.equal(await page.textContent('#len-short'), '18 rounds', 'two players get
   const [dot, link] = await page.$$eval('.title-links > span, #rulesBtn', es => es.map(e => { const g = document.createRange(); g.selectNodeContents(e); const r = g.getBoundingClientRect(); return r.top + r.height / 2; }));
   assert.ok(Math.abs(dot - link) < 2, `the dot between the title screen's links sits ${(link - dot).toFixed(1)} px off their middle`);
 }
+// The title says who the townsfolk are, and Break ground is in view on a phone without scrolling.
+assert.match(await page.textContent('#title'), /Rusty, Mabel, Dot and Gus are the townsfolk: the game plays them\./);
+assert.ok(await page.$eval('#startBtn', b => b.getBoundingClientRect().bottom <= innerHeight), 'Break ground is below the fold on a phone');
+// How to play says why later seats start with more.
+await page.click('#rulesBtn');
+assert.match(await page.textContent('#sheet'), /Whoever goes later starts with a little more: \$50 for each seat after the first\./);
+await page.click('#sheet [data-close]');
 await page.click('#startBtn');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18');
@@ -397,6 +404,7 @@ await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(w
   await page.click('#menuBtn');
   await page.click('#sheet [data-a="leave"]');
   assert.match(await page.textContent('#resumeBtn'), /^Carry on Round 4 of 20, with Rusty, Mabel and Dot$/, 'Carry on does not say which game it carries on');
+  assert.ok(await page.$eval('#startBtn', b => b.getBoundingClientRect().bottom <= innerHeight), 'with Carry on, Break ground is below the fold on a phone');
   await page.click('#startBtn');
   assert.equal(await sheetOpen(), true, 'Break ground starts over a game in progress without asking');
   assert.match(await page.textContent('#sheet'), /Your game in round 4 of 20 will be lost\./);
