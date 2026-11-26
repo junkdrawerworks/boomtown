@@ -89,7 +89,7 @@ async function midGame(page, seed = SEED, round = ROUND) {
     const { G } = window.boomtown;
     const { botStep } = await import('./js/bots.js');
     const names = [['You', 'gus'], ['Rusty', 'rusty'], ['Mabel', 'mabel'], ['Dot', 'dot']];
-    const s = G.newGame({ seats: names.map(([name, bot], k) => ({ name, kind: 'bot', bot, token: k })), seed: 5 });
+    const s = G.newGame({ seats: names.map(([name, bot], k) => ({ name, kind: 'bot', bot, token: k })), seed: 29 });
     while (!(s.round === s.rounds && s.turn === 3 && s.phase === 'manage')) botStep(s);
     s.players[0].kind = 'human';
     s.players[3].kind = 'human';
