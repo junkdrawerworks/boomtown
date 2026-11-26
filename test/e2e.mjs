@@ -342,6 +342,38 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
   await desk.close();
 }
 
+// Pass and play: two people take turns on one phone, each told when it's their go, through the real buttons.
+{
+  const pp = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const p2 = await pp.newPage();
+  p2.on('pageerror', e => problems.push(e.message));
+  await p2.addInitScript(() => localStorage.setItem('boomtown.prefs', JSON.stringify({ speed: 'fast', sound: false, len: 'short', seats: [{ who: 'you', name: 'Ann' }, { who: 'you', name: 'Ben' }, { who: 'none' }, { who: 'none' }] })));
+  await p2.goto(base);
+  await p2.click('#startBtn');
+  const names = ['Ann', 'Ben'];
+  for (let turn = 0; turn < 6; turn++) {
+    const who = names[turn % 2];
+    await p2.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 20000 });
+    assert.equal(await p2.evaluate(() => window.boomtown.state.turn), turn % 2, `turn ${turn} is not ${who}'s`);
+    if (turn) assert.match(await p2.textContent('#say'), new RegExp(`^${who}, your turn\\.`), `${who} is not told it's their turn`);
+    await p2.click('#actions button:has-text("Roll the dice")');
+    await p2.waitForSelector('.move-btn');
+    assert.match(await p2.textContent('#say'), new RegExp(`^${who}: move by both dice`), `the move line doesn't name ${who}`);
+    await p2.click('.move-btn >> nth=0');
+    for (let k = 0; k < 40 && !(await p2.$('#actions button:has-text("End turn")')); k++) {
+      // The sheet's answer first: the Decide button behind it is covered while the sheet is open.
+      const b = (await p2.$eval('#sheetWrap', el => !el.hidden)
+        ? await p2.$('#sheet [data-ok], #sheet [data-c="buy"]:not([disabled]), #sheet [data-c="pay"], #sheet .pick:not([disabled]), #sheet [data-c="pass"]')
+        : await p2.$('#actions button:has-text("Decide")'));
+      if (b) await b.click({ timeout: 3000 }).catch(() => {});
+      await p2.waitForTimeout(150);
+    }
+    await p2.click('#actions button:has-text("End turn")');
+  }
+  assert.equal(await p2.textContent('#round'), 'Round 4 of 18', 'six turns between two people are not three rounds');
+  await pp.close();
+}
+
 // Works offline once it has been opened. The server goes down as well as the browser: in some Chromium builds the
 // browser's offline switch alone doesn't stop the service worker's own requests, and this passed with no copy at all.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 });
