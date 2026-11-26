@@ -338,6 +338,24 @@ for (const [width, height] of [[375, 667], [667, 375], [844, 390], [932, 430], [
     assert.ok(m.board.height >= height - 16, `the board is only ${m.board.height} px tall at ${at}`);
   }
 }
+// A long Since your turn in the last round, where the middle of the board is shortest: the note gives way and
+// scrolls, so it, the line over it and Roll the dice stay inside the middle, and none of the note is lost.
+for (const [width, height] of [[568, 320], [740, 360], [844, 390], [320, 568]]) {
+  await page.setViewportSize({ width, height });
+  await scene(`s.round = s.rounds; for (const i of [1, 15, 17, 18]) s.owner[i] = 0;
+    s.since = []; s.since[0] = [{ t: 'rent', from: 1, amount: 275, loan: 0 }, { t: 'rent', from: 2, amount: 465, loan: 100 }, { t: 'rent', from: 3, amount: 1230, loan: 0 },
+      { t: 'land', d: 'main', from: 1, to: 1.2 }, { t: 'land', d: 'mill', from: 1, to: 0.85 }];`);
+  const m = await page.evaluate(() => {
+    const c = document.getElementById('center').getBoundingClientRect(), since = document.querySelector('#actions .since');
+    return {
+      out: [...document.querySelectorAll('#center > *, #actions > *')].filter(e => e.getClientRects().length).filter(e => { const b = e.getBoundingClientRect(); return b.top < c.top - 0.5 || b.bottom > c.bottom + 0.5; }).map(e => e.id || e.className),
+      text: since.textContent, lines: since.clientHeight / parseFloat(getComputedStyle(since).lineHeight),
+    };
+  });
+  assert.match(m.text, /^Since your turn: Rusty paid you \$275\. .* And 1 more: see what happened\.$/, `the scene has lost its long note at ${width}x${height}`);
+  assert.deepEqual(m.out, [], `a long Since your turn pushes the middle of the board onto the spaces round it at ${width}x${height}`);
+  assert.ok(m.lines >= 2, `a long Since your turn shows under two lines at ${width}x${height}`);
+}
 await page.setViewportSize({ width: 375, height: 667 });
 await scene("s.players[0].detours = 1; s.dice = [2, 5]; s.phase = 'move';");
 assert.equal(await page.textContent('#actions .detours'), 'Detours ◆ · one back at Payday');
