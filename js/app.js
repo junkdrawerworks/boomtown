@@ -9,6 +9,7 @@ import { createBoard, calm } from './view.js';
 import * as art from './art.js';
 import { sfx, setSound, soundOn } from './sound.js';
 import * as W from './words.js';
+import { copy, step } from './shown.js';
 
 const $ = id => document.getElementById(id);
 const KEY = 'boomtown.game', PREFS = 'boomtown.prefs', RECORDS = 'boomtown.records';
@@ -40,6 +41,7 @@ let ringed = null;             // the space a sheet is about, ringed on the boar
 let unused = null;             // after a detour, which die (0 or 1) wasn't moved by: it's dimmed until the next roll
 let said = null;               // what the line in the middle last said (see setSay)
 let returnTo = null;           // where the focus was when a sheet opened, to go back to when it closes
+let shown = null;              // while a move plays out, the game as the screen has shown it so far (see shown.js)
 const view = createBoard($('board'), { onCell: i => showSpace(i), onDest: i => onDest(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -222,8 +224,10 @@ function render() {
   if (!s) return;
   const human = isHumanTurn() && !busy;
   const p = s.turn, pl = G.current(s);
-  const last = s.phase !== 'over' && s.round === s.rounds;
-  $('round').textContent = s.phase === 'over' ? "Founders' Day" : last ? 'Last round' : `Round ${s.round} of ${s.rounds}`;
+  // The board, the cards, the dice and the round show the game as far as the move has been shown (see play()).
+  const v = shown || s;
+  const last = v.phase !== 'over' && v.round === v.rounds;
+  $('round').textContent = v.phase === 'over' ? "Founders' Day" : last ? 'Last round' : `Round ${v.round} of ${v.rounds}`;
   $('round').classList.toggle('last', last);
   // Board marks: where the dice can take you, what you can build on.
   let dests = [], buildable = [];
@@ -239,10 +243,10 @@ function render() {
     buildable = OWNABLE.filter(i => G.canBuild(s, p, i).ok);
     for (const i of buildable) labels[i] = 'You can build here.';
   }
-  view.render(s, { dests, buildable, focus: ringed, labels });
-  drawPlayers();
+  view.render(v, { dests, buildable, focus: ringed, labels });
+  drawPlayers(v);
   drawLogList();
-  drawDice();
+  drawDice(v);
   setSay(note);
   // The buttons in the middle. Emptying them drops the focus if it was on one, so it's put back on the new main button,
   // unless the person is somewhere else (a space on the board, a sheet).
@@ -346,7 +350,7 @@ function preview(o) {
   return parts.join(' · ');
 }
 
-function drawDice() {
+function drawDice(s) {
   const el = $('dice');
   // Emptied, it forgets what it showed: the next roll may be the same pair, and must still be drawn.
   if (!s.dice || s.phase === 'over') { el.innerHTML = ''; delete el.dataset.v; return; }
@@ -357,9 +361,9 @@ function drawDice() {
   [...el.children].forEach((d, k) => d.classList.toggle('used', k === unused));
 }
 
-function drawPlayers() {
+function drawPlayers(s) {
   const el = $('players');
-  const html = s.players.map((pl, p) => {
+  const cards = s.players.map((pl, p) => {
     const worth = G.netWorth(s, p);
     const detours = `${pl.detours} detour${pl.detours === 1 ? '' : 's'}`;
     const now = p === s.turn && s.phase !== 'over';
@@ -368,16 +372,25 @@ function drawPlayers() {
     // in the css). Whose turn it is (the gold outline) and where each piece stands are written out for a screen reader.
     // $10,000 and up, worth or cash, takes less room on a small phone: see .chip.long in the css.
     const long = (!pl.debt && money(worth).length > 6 ? ' long' : '') + (money(pl.cash).length > 6 ? ' rich' : '');
-    return `<div class="chip${now ? ' now' : ''}${long}" role="group" aria-label="${esc(pl.name)}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}">
-      <span class="tk">${art.tokenSvg(pl.token, 30)}</span><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span>
+    return {
+      cls: `chip${now ? ' now' : ''}${long}`,
+      label: `${pl.name}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}`,
+      inner: `<span class="tk">${art.tokenSvg(pl.token, 30)}</span><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span>
       ${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth"><span class="lbl">worth </span>${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
-      <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>
-    </div>`;
+      <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>`,
+    };
   });
-  // Redraw only the cards that changed, so a card lighting up (see flashCard) isn't cut short by the next render.
-  if (el.children.length !== html.length) el.innerHTML = html.join('');
-  else html.forEach((h, p) => { if (el.children[p]._h !== h) el.children[p].outerHTML = h; });
-  [...el.children].forEach((c, p) => { c._h = html[p]; });
+  // Each card is changed in place, not replaced, so a card lighting up (see flashCard) carries on while its cash changes.
+  if (el.children.length !== cards.length) el.innerHTML = cards.map(() => '<div role="group"></div>').join('');
+  cards.forEach((c, p) => {
+    const card = el.children[p], h = c.cls + c.label + c.inner;
+    if (card._h === h) return;
+    card._h = h;
+    const lit = ['flash', 'shake'].filter(k => card.classList.contains(k));
+    card.className = [c.cls, ...lit].join(' ');
+    card.setAttribute('aria-label', c.label);
+    card.innerHTML = c.inner;
+  });
 }
 
 // A player's card lights up gold for a moment: money came in.
@@ -427,9 +440,10 @@ async function run() {
       if (my !== gen) return;
     }
     const asked = s.phase === 'decide' ? { ...s.pending, p: s.turn, cash: G.current(s).cash } : null;
+    const before = copy(s);
     const ev = declined(asked, botStep(s));
     save();
-    await play(ev, my);
+    await play(ev, my, before);
     if (my !== gen) return;
   }
   if (my !== gen || !s) return;
@@ -442,19 +456,20 @@ async function run() {
 async function onRoll() {
   const my = gen;
   if (s.since) s.since[s.turn] = [];
+  const before = copy(s);
   const ev = G.roll(s);
   save();
-  await play(ev, my);
+  await play(ev, my, before);
   note = humans() > 1 ? `${nm(s.turn)}: move by both dice, or take a detour.` : 'Move by both dice, or take a detour by one.';
   render();
 }
 
 async function onMove(o) {
-  const my = gen;
+  const my = gen, before = copy(s);
   const ev = G.move(s, o.steps, o.detour);
   save();
   note = '';
-  await play(ev, my);
+  await play(ev, my, before);
   if (my !== gen) return;
   if (s.phase === 'decide') { if (!note) note = landedNote(true); render(); askDecision(); return; }
   // A line that says only how you moved (a detour, passing Payday) is followed by where you are.
@@ -483,10 +498,10 @@ function landedNote(short = false) {
 }
 
 async function onEndTurn() {
-  const my = gen;
+  const my = gen, before = copy(s);
   const ev = G.endTurn(s);
   save();
-  await play(ev, my);
+  await play(ev, my, before);
   run();
 }
 
@@ -494,39 +509,44 @@ async function decideWith(choice) {
   const my = gen;
   closeSheet();
   const asked = { ...s.pending, p: s.turn, cash: G.current(s).cash };
+  const before = copy(s);
   const ev = G.decide(s, choice);
   if (humans() > 1) declined(asked, ev); // passing the phone, the others weren't looking
   save();
-  await play(ev, my);
+  await play(ev, my, before);
   if (my !== gen) return;
   if (isHumanTurn()) { if (!note) note = landedNote(); render(); }
 }
 
 async function doBuild(i) {
-  const my = gen;
+  const my = gen, before = copy(s);
   const ev = G.build(s, i);
   save();
-  await play(ev, my);
+  await play(ev, my, before);
   render();
 }
 
 async function doSell(i) {
-  const my = gen;
+  const my = gen, before = copy(s);
   const ev = G.sell(s, i);
   save();
-  await play(ev, my);
+  await play(ev, my, before);
   render();
 }
 
-// Show a list of events: move the pieces, float the money, read the Gazette, and write it all in the log.
-async function play(events, my = gen) {
+// Show a list of events: move the pieces, float the money, read the Gazette, and write it all in the log. `before` is
+// the game as it stood before them: the screen shows a copy of it, stepped on as each event is shown, so the cash on
+// the cards, the tags on the board and the dice change as the story plays out, not all at once when the move is made.
+async function play(events, my = gen, before = null) {
   busy = true;
+  shown = before;
   render();
   const k = pace(), bot = G.current(s).kind === 'bot';
   let detour = false;
   try {
     for (const e of events) {
       if (my !== gen) return;
+      if (shown) { step(shown, e); render(); }
       const line = describe(e);
       addLog(line);
       noteSince(e);
@@ -534,7 +554,7 @@ async function play(events, my = gen) {
         case 'roll': {
           sfx.dice();
           unused = null;
-          drawDice();
+          drawDice(shown || s);
           const d = $('dice');
           d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
           note = line;
@@ -546,7 +566,7 @@ async function play(events, my = gen) {
         case 'move': {
           const ms = calm() ? 0 : (bot ? 120 : 140) * k;
           const steps = e.path.length;
-          if (detour && s.dice) { unused = s.dice[0] === steps ? 1 : 0; detour = false; drawDice(); } // dim the other die
+          if (detour && s.dice) { unused = s.dice[0] === steps ? 1 : 0; detour = false; drawDice(shown || s); } // dim the other die
           if (ms) for (let j = 0; j < steps; j++) setTimeout(() => sfx.hop(), j * ms);
           else sfx.hop();
           await view.animateMove(s, e.p, e.path, ms);
@@ -604,6 +624,7 @@ async function play(events, my = gen) {
     }
   } finally {
     busy = false;
+    shown = null;
   }
   render();
 }
@@ -761,7 +782,7 @@ document.addEventListener('keydown', e => {
   next.focus();
 });
 
-const lotFacts = (i, o) => W.lotFacts(s, i, o);
+const lotFacts = (i, o) => W.lotFacts(shown || s, i, o); // a lot looked at mid-move is as the board shows it
 
 function showSpace(i) {
   // While the townsfolk play, a space can be looked at any time (its sheet then has no buttons, and holds them up).

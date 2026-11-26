@@ -48,6 +48,7 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - `js/cards.js`: the Gazette's headlines.
 - `js/bots.js`: Mabel, Rusty, Dot and Gus, who answer the same questions a person does, through the same rules.
 - `js/view.js` and `js/art.js`: the board, drawn in SVG, and the little drawings on it.
+- `js/shown.js`: the game as the screen shows it while a move plays out, stepped along with each event, so the cash and the tags change as the piece arrives and the rent is paid.
 - `js/app.js`: the screens and the flow of a turn. `js/sound.js`: small sounds made with Web Audio.
 - `js/words.js`: the game's words with no screen: amounts, who's who in a sentence, a lot's sheet, and How to play, its numbers taken from `RULES`.
 - `test/sim.mjs`: plays bot games for balancing. The numbers in `RULES` came from it.

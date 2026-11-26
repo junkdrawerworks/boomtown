@@ -429,6 +429,23 @@ await page.evaluate(() => {
   assert.ok(seen.floats.every(f => f.inside !== false), `money floating off the top row leaves the board: ${JSON.stringify(seen)}`);
 }
 
+// The cards change as the story plays out, not the moment a move is made: on a move past Payday the card keeps its
+// cash while the piece is on its way, and shows the pay once it's there.
+await scene("s.players[0].pos = 26; s.players[0].debt = 0; s.dice = [3, 4]; s.phase = 'move';");
+{
+  const [then, early] = await page.evaluate(() => {
+    const cash = () => document.querySelector('#players .chip .cash').textContent;
+    const was = cash();
+    document.querySelector('.move-btn').click(); // both dice, 7, past Payday
+    return [was, cash()];
+  });
+  assert.equal(early, then, `the card shows ${early} the moment the move is made, before the piece reaches Payday (it had ${then})`);
+  await page.waitForFunction(() => !window.boomtown.busy);
+  const [cash, card] = await page.evaluate(() => [window.boomtown.state.players[0].cash, document.querySelector('#players .chip .cash').textContent]);
+  assert.equal(card, '$' + cash.toLocaleString('en-US'), "the card doesn't catch up with the cash once the move has been shown");
+  assert.notEqual(card, then, 'passing Payday paid nothing');
+}
+
 // The buy sheet's rents are what the lot will earn once bought: here Mill Row's other two lots have a house each, so
 // the street's bonus counts, as it does in the rent paid. Its rows for a house and up count the land each build raises.
 await scene(`const lots = B.LOTS_IN.mill; lots.forEach(i => { s.owner[i] = -1; s.level[i] = 0; });

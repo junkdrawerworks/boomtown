@@ -692,3 +692,34 @@ test('random players and bots: money adds up and nothing is left over between tu
     assert.ok(s.players.every(p => p.history.length === 9));
   }
 });
+
+// The screen shows a move's events one at a time, on a copy of the game stepped along with them (js/shown.js), so the
+// cards and tags change as each one is shown. Stepped through every event of every action, the copy ends where the game
+// did: cash, loans, detours, pieces, owners, buildings, land, the kitty, the dice and whose turn it is. Along the way no
+// card ever shows cash below nothing.
+test('the copy the screen shows, stepped through each event, ends where the game did', async () => {
+  const { copy, step } = await import('../js/shown.js');
+  const seen = s => JSON.stringify([s.players.map(p => [p.cash, p.debt, p.detours, p.pos]), s.owner, s.level, s.land, s.kitty, s.dice, s.turn, s.round, s.phase === 'over']);
+  const kinds = new Set();
+  for (let g = 0; g < 120; g++) {
+    const n = 2 + g % 3, r = mk(g + 7), names = Object.keys(BOTS);
+    const s = G.newGame({ seats: Array.from({ length: n }, (_, k) => (k + g) % 2 ? { name: 'P' + k, kind: 'human', token: k } : { name: names[k], kind: 'bot', bot: names[k], token: k }), rounds: 10, seed: g + 1 });
+    const pick = a => a[Math.floor(r() * a.length)];
+    while (s.phase !== 'over') {
+      const v = copy(s);
+      let ev;
+      if (G.current(s).kind === 'bot') ev = botStep(s);
+      else if (s.phase === 'roll') ev = G.roll(s);
+      else if (s.phase === 'move') { const o = pick(G.moveOptions(s).filter(o => o.usable)); ev = G.move(s, o.steps, o.detour); }
+      else if (s.phase === 'decide') ev = G.decide(s, pick(legal(s)));
+      else { const b = OWNABLE.filter(i => G.canBuild(s, s.turn, i).ok), x = r(); ev = x < 0.3 && b.length ? G.build(s, pick(b)) : x < 0.35 && OWNABLE.some(i => G.canSell(s, s.turn, i)) ? G.sell(s, pick(OWNABLE.filter(i => G.canSell(s, s.turn, i)))) : G.endTurn(s); }
+      for (const e of ev) {
+        step(v, e);
+        kinds.add(e.t);
+        assert.ok(v.players.every(p => p.cash >= 0 && p.debt >= 0), `the copy shows cash or a loan below nothing after ${JSON.stringify(e)} (game ${g})`);
+      }
+      assert.equal(seen(v), seen(s), `the copy is not where the game is after ${JSON.stringify(ev)} (game ${g}, round ${s.round})`);
+    }
+  }
+  for (const t of ['roll', 'detour', 'move', 'collect', 'loan', 'pay', 'repaid', 'interest', 'land', 'buy', 'buyout', 'build', 'sell', 'turn', 'over', 'card', 'kitty', 'rezone']) assert.ok(kinds.has(t), `no ${t} event was tried`);
+});
