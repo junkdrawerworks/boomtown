@@ -437,6 +437,15 @@ test('the rules text quotes the numbers in RULES', () => {
   if (both !== 2 * one) assert.doesNotMatch(SPACE_HELP.depot ?? '', /doubles/, `depot rent goes ${one} -> ${both}`);
   assert.ok(W.SAYS.tax.includes(`$${G.RULES.taxPerLevel} for every building level`), 'the Assessor help gives the charge per level');
   assert.ok(W.SAYS.tax.includes(`never less than $${G.RULES.taxMin},`), 'the Assessor help gives the least it charges');
+  // How to play and the README go round the board: the Assessor, the depots, the detours.
+  const words = ['no', 'one', 'two', 'three'];
+  for (const [where, text] of [['How to play', rules], ['README', readme]]) {
+    assert.ok(text.includes(`$${G.RULES.taxPerLevel} for every building level you own, and never less than $${G.RULES.taxMin}, into the kitty`), `${where} doesn't say what the Assessor charges`);
+    assert.ok(text.includes(`$${one}, or $${both} when one player owns both`), `${where} doesn't give depot rents of $${one} and $${both}`);
+    assert.ok(text.includes(`start with ${words[G.RULES.detours]} detours and can hold ${words[G.RULES.detourMax]}`), `${where} doesn't say how many detours you start with and can hold`);
+    assert.match(text, /Lumberyard/);
+    assert.match(text, /estate sale/i);
+  }
 });
 
 // Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the

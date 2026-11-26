@@ -24,7 +24,9 @@ const R = G.RULES;
 export const SAYS = {
   street: `each lot with a building on it adds ${Math.round(R.street * 100)}% to the rent of the other lots there, whoever owns them`,
   tax: `${money(R.taxPerLevel)} for every building level you own, and never less than ${money(R.taxMin)}, into the kitty`,
+  depots: `rent is ${money(R.depotRent[1])}, or ${money(R.depotRent[2])} when one player owns both`,
 };
+const count = n => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
 
 export const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
 
@@ -90,7 +92,7 @@ export function rulesHtml() {
     <p>Boomtown is a town that isn't built yet. Go round the board buying lots and building on them. When the last round ends it's Founders' Day, and whoever is worth the most wins: cash, plus land, plus buildings, less any loan.</p>
     <h3>Your turn</h3>
     <ul>
-      <li><b>Roll two dice and move by both.</b> Or take a <b>detour</b> and move by just one of them. You have two detours; passing Payday gives one back.</li>
+      <li><b>Roll two dice and move by both.</b> Or take a <b>detour</b> and move by just one of them. You start with ${count(R.detours)} detours and can hold ${count(R.detourMax)}; passing Payday gives one back.</li>
       <li><b>Land on a lot for sale</b> and you can buy it.</li>
       <li><b>Land on someone else's lot</b> and you pay them rent. If nothing is built on it and they don't own the whole district, you can make them sell it to you instead, for ${R.buyout} times the land value.</li>
       <li><b>Then build</b> on any of your lots: a house, then a shop, then a block. A block needs all three lots in the district.</li>
@@ -100,7 +102,7 @@ export function rulesHtml() {
     <ul>
       <li><b>Every building lifts the street.</b> It raises the land value of its whole district, and ${SAYS.street}.</li>
       <li><b>Own a whole district</b> and its rents go up: double on empty lots, and half as much again on built ones.</li>
-      <li><b>The Gazette</b> brings news: a district booms or busts, a fair pays out, the pipes burst.</li>
+      <li><b>The Gazette</b> brings news: a district booms or busts, a fair pays out, the pipes burst. An <b>estate sale</b> lets you buy any empty lot at half price.</li>
     </ul>
     <h3>The corners</h3>
     <ul>
@@ -108,6 +110,12 @@ export function rulesHtml() {
       <li><b>Land Office:</b> buy any empty lot in town.</li>
       <li><b>Town Square:</b> take the kitty, where fines and taxes collect.</li>
       <li><b>City Hall:</b> rezone a district, putting its land up 20%.</li>
+    </ul>
+    <h3>Round the board</h3>
+    <ul>
+      <li><b>Lumberyard:</b> build one level on one of your lots at half price.</li>
+      <li><b>Assessor:</b> pay ${SAYS.tax}.</li>
+      <li><b>Depots:</b> ${SAYS.depots}. Nobody can make you sell a depot while you own both.</li>
     </ul>
     <h3>Running short</h3>
     <ul>
