@@ -771,7 +771,7 @@ function showLots() {
     }
     const c = G.canBuild(s, p, i);
     const lv = s.level[i];
-    const next = lv < G.RULES.maxLevel ? `${G.LEVEL_NAMES[lv + 1]}: rent ${money(G.rentFor(s, i, lv + 1))}` : 'Built as tall as it goes';
+    const next = lv < G.RULES.maxLevel ? `${G.LEVEL_NAMES[lv + 1]}: rent ${money(W.rentAfterBuild(s, i))}` : 'Built as tall as it goes';
     h += `<div class="pick" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
       <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small>${G.buyoutPrice(s, i) != null ? `<small class="warn">Empty: a rival can make you sell for ${money(G.buyoutPrice(s, i))}</small>` : ''}</span>
       ${canAct && G.canSell(s, p, i) ? `<button class="secondary sell" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} back for ${money(G.sellValue(i))}">Sell ${money(G.sellValue(i))}</button>` : '<span></span>'}
@@ -846,7 +846,7 @@ function askDecision() {
       h = `<h2 id="sheetTitle">Lumberyard</h2><p>Build one level on one of your lots at half price.</p><div class="pick-list">`;
       for (const i of OWNABLE.filter(j => s.owner[j] === p && SPACES[j].type === 'lot')) {
         const c = G.canBuild(s, p, i, 0.5);
-        h += `<button class="pick" data-c="${i}" ${c.ok ? '' : 'disabled'}>${swatch(SPACES[i].district)}<span>${esc(SPACES[i].name)}<small>${s.level[i] < G.RULES.maxLevel ? `${G.LEVEL_NAMES[s.level[i] + 1]}: rent ${money(G.rentFor(s, i))} → ${money(G.rentFor(s, i, s.level[i] + 1))}` : 'Built as tall as it goes'}${!c.ok && c.reason && s.level[i] < G.RULES.maxLevel ? ' · ' + esc(c.reason) : ''}</small></span><span class="cost">${c.cost != null ? money(c.cost) : ''}</span></button>`;
+        h += `<button class="pick" data-c="${i}" ${c.ok ? '' : 'disabled'}>${swatch(SPACES[i].district)}<span>${esc(SPACES[i].name)}<small>${s.level[i] < G.RULES.maxLevel ? `${G.LEVEL_NAMES[s.level[i] + 1]}: rent ${money(G.rentFor(s, i))} → ${money(W.rentAfterBuild(s, i))}` : 'Built as tall as it goes'}${!c.ok && c.reason && s.level[i] < G.RULES.maxLevel ? ' · ' + esc(c.reason) : ''}</small></span><span class="cost">${c.cost != null ? money(c.cost) : ''}</span></button>`;
       }
       h += `</div><div class="buttons stick"><button class="secondary" data-c="pass">Not today</button></div>`;
       break;

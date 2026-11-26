@@ -20,10 +20,16 @@ export const agree = (pl, you, they) => (isYou(pl) ? you : they);
 
 export const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
 
-// What lot i would rent for at `level`, with `owner` owning it: a lot for sale reckoned as if bought.
+// What lot i would rent for at `level`, with `owner` owning it (a lot for sale reckoned as if bought), built up to
+// that level from where it stands. Each level built raises its district's land, as game.js's build does (shiftLand,
+// to the same thousandth and within the same bounds), so the rents above a lot's level count that too.
 export function rentAt(s, i, level, owner = s.owner[i]) {
-  return G.rentFor({ ...s, owner: { ...s.owner, [i]: owner }, level: { ...s.level, [i]: level } }, i, level);
+  const d = SPACES[i].district, land = { ...s.land }, R = G.RULES;
+  for (let k = s.level[i]; k < level; k++) land[d] = Math.min(R.landMax, Math.max(R.landMin, Math.round((land[d] + R.rise) * 1000) / 1000));
+  return G.rentFor({ ...s, land, owner: { ...s.owner, [i]: owner }, level: { ...s.level, [i]: level } }, i, level);
 }
+// The rent lot i would bring with one more level on it.
+export const rentAfterBuild = (s, i) => rentAt(s, i, s.level[i] + 1);
 
 // Who a lot for sale is reckoned for: the person whose turn it is, or else the one person at the table, so its rents
 // are what it would earn them, its whole district's bonus included when they own the rest. With nobody to reckon for

@@ -234,7 +234,8 @@ test("a lot for sale's rent table is what it would earn once bought, street and 
   const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Rusty', kind: 'bot', bot: 'rusty', token: 1 }, { name: 'Dot', kind: 'bot', bot: 'dot', token: 2 }], seed: 5 });
   const [a, b, c] = LOTS_IN.mill;
   s.owner[b] = 1; s.level[b] = 1; s.owner[c] = 2; s.level[c] = 1;
-  const bought = (s, p) => [0, 1, 2, 3].map(lv => G.rentFor({ ...s, owner: { ...s.owner, [a]: p }, level: { ...s.level, [a]: lv } }, a, lv));
+  // Bought by p, then built up to each level, each level putting the land up as a build does.
+  const bought = (s, p) => [0, 1, 2, 3].map(lv => G.rentFor({ ...s, land: { ...s.land, mill: +(s.land.mill + lv * G.RULES.rise).toFixed(3) }, owner: { ...s.owner, [a]: p }, level: { ...s.level, [a]: lv } }, a, lv));
   assert.deepEqual(tableRents(s, a), bought(s, 0));
   assert.ok(tableRents(s, a)[0] > Math.round(G.landValue(s, a) * G.RULES.rent[0] / 5) * 5, "the street's bonus is left out");
   // The person owns the other two: buying this one makes the whole district theirs.
@@ -258,6 +259,28 @@ test("an owned lot's rent table is unchanged up to its level", () => {
   assert.deepEqual(tableRents(s, a).slice(0, 3), [0, 1, 2].map(lv => G.rentFor(s, a, lv)));
   s.owner[b] = 0; s.owner[c] = 0;
   assert.deepEqual(tableRents(s, a).slice(0, 3), [0, 1, 2].map(lv => G.rentFor(s, a, lv)));
+});
+
+test('the rent after a build counts the land it raises, as the build does', () => {
+  const s = G.newGame({ seats: seats(2), seed: 7 });
+  const [a, b, c] = LOTS_IN.river;
+  for (const i of [a, b, c]) s.owner[i] = 0;
+  s.level[b] = 1; s.players[0].cash = 99999; s.phase = 'manage';
+  const built = t => { const u = structuredClone(t); G.build(u, a); return u; };
+  for (const land of [1, 1.37, 2.95, 3]) {
+    s.land.river = land;
+    const steps = [];
+    for (let t = structuredClone(s); t.level[a] < G.RULES.maxLevel; t = built(t)) {
+      const after = built(t);
+      assert.equal(W.rentAfterBuild(t, a), G.rentFor(after, a), `land ${land}, level ${t.level[a]}`);
+      steps.push(G.rentFor(after, a));
+    }
+    // The rent table's rows above the lot's level are those same rents.
+    assert.deepEqual(tableRents(s, a).slice(1), steps, `land ${land}`);
+  }
+  assert.ok(W.rentAfterBuild(s, a) >= G.rentFor(s, a, 1));
+  s.land.river = 1;
+  assert.ok(W.rentAfterBuild(s, a) > G.rentFor(s, a, 1), 'the land the build raises is left out');
 });
 
 test("a block's reason names the lot it's missing, and who has it", () => {

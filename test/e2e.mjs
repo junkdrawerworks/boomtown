@@ -284,7 +284,7 @@ await page.evaluate(() => {
 }
 
 // The buy sheet's rents are what the lot will earn once bought: here Mill Row's other two lots have a house each, so
-// the street's bonus counts, as it does in the rent paid.
+// the street's bonus counts, as it does in the rent paid. Its rows for a house and up count the land each build raises.
 await scene(`const lots = B.LOTS_IN.mill; lots.forEach(i => { s.owner[i] = -1; s.level[i] = 0; });
   s.owner[lots[1]] = 1; s.level[lots[1]] = 1; s.owner[lots[2]] = 2; s.level[lots[2]] = 1;
   s.players[0].pos = lots[0]; s.phase = 'decide'; s.dice = [1, 1];
@@ -294,7 +294,8 @@ await scene(`const lots = B.LOTS_IN.mill; lots.forEach(i => { s.owner[i] = -1; s
   await page.waitForSelector('#sheet [data-c="buy"]');
   const { shown, real } = await page.evaluate(() => {
     const s = window.boomtown.state, { G } = window.boomtown, i = s.pending.at;
-    const real = [0, 1, 2, 3].map(lv => G.rentFor({ ...s, owner: { ...s.owner, [i]: 0 }, level: { ...s.level, [i]: lv } }, i, lv));
+    // Bought, then built up to each level, each level putting the land up as a build does.
+    const real = [0, 1, 2, 3].map(lv => G.rentFor({ ...s, land: { ...s.land, mill: +(s.land.mill + lv * G.RULES.rise).toFixed(3) }, owner: { ...s.owner, [i]: 0 }, level: { ...s.level, [i]: lv } }, i, lv));
     return { shown: [...document.querySelectorAll('#sheet .facts td:last-child')].map(td => td.textContent), real: real.map(n => '$' + n.toLocaleString('en-US')) };
   });
   assert.deepEqual(shown, real, "the buy sheet's rents are not what the lot earns once bought");
