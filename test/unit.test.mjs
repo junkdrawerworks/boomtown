@@ -295,3 +295,31 @@ test('in the final round a townsperson never forces a sale: it costs half as muc
     assert.equal(chooseDecision(s), want, `round ${s.round}`);
   }
 });
+
+test("the move a townsperson picks never counts a buy or a forced sale they'd then turn down", () => {
+  // Mabel keeps a $300 cushion: with $200 to spare after the price she passes, so the move there scores nothing for it.
+  const offer = spare => {
+    const s = botGame('mabel');
+    const lot = at('Hilltop');
+    s.players[0].cash = G.landValue(s, lot) + spare;
+    s.players[0].pos = (lot - 5 + N) % N;
+    const score = scoreSpace(s, lot, 5);
+    goTo(s, lot);
+    return [score > 0, chooseDecision(s)];
+  };
+  assert.deepEqual(offer(200), [false, 'pass']);
+  assert.deepEqual(offer(400), [true, 'buy']);
+  // Dot keeps 40% of her cushion after a forced sale; short of that she pays the rent, and the move counts only the rent.
+  const sale = spare => {
+    const s = botGame('dot');
+    const [a, b, c] = LOTS_IN.hill;
+    s.owner[a] = 0; s.owner[b] = 0; s.owner[c] = 1;
+    s.players[0].cash = G.buyoutPrice(s, c) + spare;
+    s.players[0].pos = (c - 5 + N) % N;
+    const score = scoreSpace(s, c, 5) + G.rentFor(s, c);
+    goTo(s, c);
+    return [score > 0, chooseDecision(s)];
+  };
+  assert.deepEqual(sale(20), [false, 'pay']);
+  assert.deepEqual(sale(400), [true, 'buyout']);
+});

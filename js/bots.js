@@ -57,24 +57,45 @@ function reserve(s) {
   return late * (b.reserve + 0.5 * worst);
 }
 
+// Would this bot buy lot i, at this price, holding this much cash? It keeps its cushion, unless it wants the lot
+// badly. The same test answers the offer and scores the move there, so a bot never goes out of its way to a lot
+// and then walks past it.
+export function wouldBuy(s, i, cash = current(s).cash, price = landValue(s, i)) {
+  if (price > cash) return false;
+  const after = cash - price, w = want(s, s.turn, i) * me(s).buy;
+  return after >= reserve(s) * (w > 1.6 ? 0.4 : 1) || (w > 1.2 && after > 40);
+}
+
+// Would this bot make the owner of lot i sell it? Only if it's worth the price to this bot, keeps some of its
+// cushion, and isn't the final round: then a sale costs half as much again as the land adds to worth, and saves
+// only one rent.
+export function wouldForce(s, i, cash = current(s).cash, price = buyoutPrice(s, i)) {
+  if (price == null || price > cash || s.round >= s.rounds) return false;
+  return buyoutWorth(s, i) * me(s).buyout >= price && cash - price >= reserve(s) * 0.4;
+}
+
 // Score where each move would land, for choosing between the dice.
 export function scoreSpace(s, to, steps) {
   const p = s.turn, pl = current(s), sp = SPACES[to], b = me(s);
-  let v = 0;
+  let v = 0, cash = pl.cash;
   const passes = pl.pos + steps >= N;
-  if (passes) v += RULES.salary + (to === 0 ? RULES.landBonus : 0);
+  if (passes) {
+    const pay = RULES.salary + (to === 0 ? RULES.landBonus : 0);
+    v += pay;
+    // Payday's money goes to any loan first, interest and all.
+    const debt = pl.debt ? pl.debt + Math.max(5, Math.ceil(pl.debt * RULES.interest / 5) * 5) : 0;
+    cash += Math.max(0, pay - debt);
+  }
   switch (sp.type) {
     case 'lot': case 'depot': {
       const o = s.owner[to];
       if (o < 0) {
-        const price = landValue(s, to);
-        if (pl.cash - price >= reserve(s) * 0.5) v += price * 0.4 * want(s, p, to) * b.buy;
+        if (wouldBuy(s, to, cash)) v += landValue(s, to) * 0.4 * want(s, p, to) * b.buy;
       } else if (o === p) v += 5;
       else {
         const rent = rentFor(s, to);
         v -= rent;
-        const bo = buyoutPrice(s, to);
-        if (bo != null && s.round < s.rounds && pl.cash > bo && buyoutWorth(s, to) * b.buyout >= bo) v += rent + buyoutWorth(s, to) * b.buyout - bo;
+        if (wouldForce(s, to, cash)) v += rent + buyoutWorth(s, to) * b.buyout - buyoutPrice(s, to);
       }
       break;
     }
@@ -113,19 +134,10 @@ function bestToBuy(s, list, priceOf) {
 }
 
 export function chooseDecision(s) {
-  const p = s.turn, pl = current(s), q = s.pending, b = me(s);
+  const p = s.turn, pl = current(s), q = s.pending;
   switch (q.kind) {
-    case 'buy': {
-      if (q.price > pl.cash) return 'pass';
-      const after = pl.cash - q.price;
-      const w = want(s, p, q.at) * b.buy;
-      return after >= reserve(s) * (w > 1.6 ? 0.4 : 1) || (w > 1.2 && after > 40) ? 'buy' : 'pass';
-    }
-    case 'rent': {
-      // In the final round a sale costs half as much again as the land adds to worth, and saves only one rent.
-      if (q.buyout == null || q.buyout > pl.cash || s.round >= s.rounds) return 'pay';
-      return buyoutWorth(s, q.at) * b.buyout >= q.buyout && pl.cash - q.buyout >= reserve(s) * 0.4 ? 'buyout' : 'pay';
-    }
+    case 'buy': return wouldBuy(s, q.at, pl.cash, q.price) ? 'buy' : 'pass';
+    case 'rent': return wouldForce(s, q.at, pl.cash, q.buyout ?? null) ? 'buyout' : 'pay';
     case 'office': return bestToBuy(s, emptyLots(s), i => landValue(s, i)) ?? 'pass';
     case 'estate': return bestToBuy(s, emptyLots(s).filter(i => SPACES[i].type === 'lot'), i => Math.round(landValue(s, i) / 2)) ?? 'pass';
     case 'yard': return bestBuild(s, 0.5, true) ?? 'pass';
