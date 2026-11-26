@@ -226,3 +226,13 @@ test("a lot's sheet talks to You as you: no \"You's house\", no \"You owns\"", (
   s.owner[DEPOTS[0]] = 0;
   assert.match(W.lotFacts(s, DEPOTS[0]), /Your depot\./);
 });
+
+test("a block's reason names the lot it's missing, and who has it", () => {
+  const s = G.newGame({ seats: seats(), seed: 9 });
+  const [a, b, c] = LOTS_IN.mill;
+  s.owner[a] = 0; s.level[a] = 2; s.owner[b] = 1; s.phase = 'manage';
+  const name = i => SPACES[i].name;
+  assert.equal(G.canBuild(s, 0, a).reason, `A block needs all three Mill Row lots. ${name(b)} is P1's and ${name(c)} is still for sale.`);
+  s.owner[b] = 0;
+  assert.equal(G.canBuild(s, 0, a).reason, `A block needs all three Mill Row lots. ${name(c)} is still for sale.`);
+});

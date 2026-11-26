@@ -113,7 +113,10 @@ export function canBuild(s, p, i, discount = 1) {
   if (s.owner[i] !== p) return { ok: false, reason: 'Not yours.' };
   if (s.level[i] >= RULES.maxLevel) return { ok: false, reason: 'Built as tall as it goes.' };
   if (s.level[i] === RULES.maxLevel - 1 && !ownsDistrict(s, p, sp.district)) {
-    return { ok: false, reason: `A block needs all of ${DISTRICT[sp.district].name}.` };
+    // Name the gap: "A block needs all three Mill Row lots. Sawpit Alley is Rusty's."
+    const gaps = LOTS_IN[sp.district].filter(j => s.owner[j] !== p)
+      .map(j => `${SPACES[j].name} is ${s.owner[j] < 0 ? 'still for sale' : `${s.players[s.owner[j]].name}'s`}`);
+    return { ok: false, reason: `A block needs all three ${DISTRICT[sp.district].name} lots. ${gaps.join(' and ')}.` };
   }
   const cost = Math.round(buildCost(i) * discount);
   if (pl.cash < cost) return { ok: false, cost, reason: `Costs $${cost}.` };
