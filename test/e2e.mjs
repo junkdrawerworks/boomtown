@@ -654,6 +654,25 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
   assert.equal(await page.$$eval('#actions .since', e => e.length), 0, 'what happened since your turn stays after you roll');
 }
 
+// A townsperson who passes on a lot, or pays the rent rather than force a sale, says so in the line and the log, but
+// not in what happened since your turn.
+await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0);
+  s.owner[i] = -1; s.players[1].pos = i; s.players[1].cash = 0;
+  s.turn = 1; s.dice = [1, 2]; s.phase = 'decide';
+  s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };
+  window.left = B.SPACES[i].name;`);
+await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 20000 });
+assert.ok((await page.textContent('#log')).includes(`Rusty left ${await page.evaluate(() => window.left)} for sale.`), 'the log does not say Rusty passed on a lot');
+await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0 && (s.owner[j] = 0, G.buyoutPrice(s, j) != null));
+  const price = G.buyoutPrice(s, i);
+  s.players[1].pos = i; s.players[1].cash = price;
+  s.turn = 1; s.dice = [1, 2]; s.phase = 'decide';
+  s.pending = { kind: 'rent', at: i, owner: 0, rent: G.rentFor(s, i), buyout: price };`);
+await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 20000 });
+assert.ok((await page.textContent('#log')).includes('Rusty paid the rent rather than make you sell.'), 'the log does not say Rusty could have forced a sale');
+assert.match(await page.textContent('#actions .since'), /^Since your turn: Rusty paid you \$[\d,]+\./);
+assert.doesNotMatch(await page.textContent('#actions .since'), /rather|for sale/, 'what the townsfolk passed up is in what happened since your turn');
+
 // On a desktop, 1280 x 800: the title fits, and the board is square, whole on screen, with the players beside it.
 // Here the browser won't let the page keep anything (a private window, a sandboxed frame): a game left from the menu
 // can still be carried on, since it is still in memory.
@@ -729,6 +748,18 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
     await p2.click('#actions button:has-text("End turn")');
   }
   assert.equal(await p2.textContent('#round'), 'Round 4 of 18', 'six turns between two people are not three rounds');
+  // Passing the phone, the others weren't looking: a person who leaves a lot for sale is said to, as the townsfolk are.
+  await p2.evaluate(async () => {
+    const s = window.boomtown.state, G = window.boomtown.G, B = await import('./js/board.js');
+    const i = Object.keys(s.owner).map(Number).find(j => s.owner[j] < 0);
+    s.players[0].pos = i; s.dice = [1, 2]; s.phase = 'decide';
+    s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };
+    window.left = B.SPACES[i].name;
+    window.boomtown.start(s, true);
+  });
+  await p2.click('#sheet [data-c="pass"]');
+  await p2.waitForFunction(() => window.boomtown.state.phase === 'manage' && !window.boomtown.busy);
+  assert.equal(await p2.textContent('#say'), `Ann left ${await p2.evaluate(() => window.left)} for sale.`, 'a person passing on a lot goes unsaid at a shared table');
   await pp.close();
 }
 

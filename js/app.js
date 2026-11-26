@@ -393,7 +393,8 @@ async function run() {
       await wait(150);
       if (my !== gen) return;
     }
-    const ev = botStep(s);
+    const asked = s.phase === 'decide' ? { ...s.pending, p: s.turn, cash: G.current(s).cash } : null;
+    const ev = declined(asked, botStep(s));
     save();
     await play(ev, my);
     if (my !== gen) return;
@@ -459,7 +460,9 @@ async function onEndTurn() {
 async function decideWith(choice) {
   const my = gen;
   closeSheet();
+  const asked = { ...s.pending, p: s.turn, cash: G.current(s).cash };
   const ev = G.decide(s, choice);
+  if (humans() > 1) declined(asked, ev); // passing the phone, the others weren't looking
   save();
   await play(ev, my);
   if (my !== gen) return;
@@ -559,6 +562,7 @@ async function play(events, my = gen) {
           break;
         }
         case 'kitty': note = line; render(); break;
+        case 'left': case 'spared': note = line; setSay(note); await wait(550 * k); break;
         case 'rezone': sfx.stamp(); note = line; render(); await wait(500 * k); break;
         case 'interest': case 'repaid': render(); break;
         case 'turn': if (e.p === 0) addLog(`Round ${e.round}`); note = whoseTurn(); break;
@@ -569,6 +573,16 @@ async function play(events, my = gen) {
     busy = false;
   }
   render();
+}
+
+// What a player chose not to do has no event of its own: a lot left for sale, a forced sale not made. So it isn't
+// missed, the decision's events get one more line: asked is the question as it stood, with who answered it and the
+// cash they had. Only the line and the log say it, not what happened since your turn.
+function declined(asked, ev) {
+  if (asked?.kind === 'buy' && !ev.some(e => e.t === 'buy')) ev.push({ t: 'left', p: asked.p, at: asked.at });
+  else if (asked?.kind === 'rent' && asked.buyout != null && asked.buyout <= asked.cash && !ev.some(e => e.t === 'buyout'))
+    ev.push({ t: 'spared', p: asked.p, from: asked.owner, at: asked.at });
+  return ev;
 }
 
 // ---------- since your turn ----------
@@ -642,6 +656,8 @@ function describe(e) {
     case 'interest': return `${money(e.amount)} interest went on ${whose(e.p)} loan.`;
     case 'buy': return `${nm(e.p)} bought ${sp(e.at)} for ${money(e.price)}.`;
     case 'buyout': return `${nm(e.p)} made ${who(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
+    case 'left': return `${nm(e.p)} left ${sp(e.at)} for sale.`;
+    case 'spared': return `${nm(e.p)} paid the rent rather than make ${who(e.from)} sell.`;
     case 'build': return `${nm(e.p)} built a ${G.LEVEL_NAMES[e.level].toLowerCase()} on ${sp(e.at)}.`;
     case 'sell': {
       const d = SPACES[e.at].district, fell = landMoved?.d === d ? Math.round((landMoved.from - landMoved.to) * 100) : 0;
