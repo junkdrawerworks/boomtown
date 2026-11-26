@@ -299,7 +299,13 @@ await scene(`B.OWNABLE.forEach(i => { if (B.SPACES[i].type === 'lot') { s.owner[
 await page.click('#actions button:has-text("Roll the dice")');
 await page.waitForSelector('.move-btn');
 await page.waitForTimeout(300);
-{
+// The same, with the phone held sideways, at the sizes of common phones: the board stands on the left as tall as the
+// screen allows, the header, every player's card and the newest line of What happened are beside it, and nothing
+// scrolls.
+for (const [width, height] of [[375, 667], [667, 375], [844, 390], [932, 430], [740, 360], [568, 320]]) {
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(200);
+  const at = `${width}x${height}`;
   const m = await page.evaluate(() => {
     const box = e => e.getBoundingClientRect();
     const hit = (a, b) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5 && Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5;
@@ -307,21 +313,32 @@ await page.waitForTimeout(300);
     const dice = [...document.querySelectorAll('#dice .die')].map(box);
     const det = document.querySelector('#actions .detours'), r = document.createRange();
     r.selectNodeContents(det);
+    const board = box(document.querySelector('.board-wrap'));
+    const seen = e => { const b = box(e); return b.top >= -0.5 && b.left >= -0.5 && b.bottom <= innerHeight + 0.5 && b.right <= innerWidth + 0.5; };
     return {
       dice: dice.length, over: dice.some(d => hit(d, say) || hit(d, act)),
       out: [...document.getElementById('center').children].filter(e => e.getClientRects().length).filter(e => { const b = box(e); return b.top < c.top - 0.5 || b.bottom > c.bottom + 0.5 || b.left < c.left - 0.5 || b.right > c.right + 0.5; }).map(e => e.id),
       lines: new Set([...r.getClientRects()].map(x => Math.round(x.top))).size, det: det.textContent, say: document.getElementById('say').textContent,
       long: [...document.querySelectorAll('.move-btn')].filter(b => /passing Payday/.test(b.textContent)).length,
+      board: board.toJSON(), side: box(document.querySelector('.side')).toJSON(), scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
+      hidden: [document.querySelector('.top'), ...document.querySelectorAll('.chip, #log li:first-child, .board-wrap')].filter(e => !seen(e)).map(e => e.className || e.textContent),
     };
   });
   assert.equal(m.say, 'Move by both dice, or take a detour by one.');
   assert.equal(m.long, 2, 'the scene has lost its long move buttons');
   assert.equal(m.dice, 2);
-  assert.equal(m.over, false, 'the dice are drawn over the line or the move buttons at 375x667');
-  assert.deepEqual(m.out, [], 'the middle of the board spills onto the spaces round it at 375x667');
+  assert.equal(m.over, false, `the dice are drawn over the line or the move buttons at ${at}`);
+  assert.deepEqual(m.out, [], `the middle of the board spills onto the spaces round it at ${at}`);
   assert.equal(m.det, 'Detours ◆◆ (all you can hold)', 'the detours line at two says Payday gives one back');
-  assert.equal(m.lines, 1, `the detours line wraps at 375 px: ${m.det}`);
+  assert.equal(m.lines, 1, `the detours line wraps at ${at}: ${m.det}`);
+  assert.deepEqual(m.scroll, [width, height], `the page scrolls at ${at}`);
+  assert.deepEqual(m.hidden, [], `part of the play screen is off the screen at ${at}`);
+  if (width > height) {
+    assert.ok(m.board.right <= m.side.left, `the players are not beside the board at ${at}`);
+    assert.ok(m.board.height >= height - 16, `the board is only ${m.board.height} px tall at ${at}`);
+  }
 }
+await page.setViewportSize({ width: 375, height: 667 });
 await scene("s.players[0].detours = 1; s.dice = [2, 5]; s.phase = 'move';");
 assert.equal(await page.textContent('#actions .detours'), 'Detours ◆ · one back at Payday');
 

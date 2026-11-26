@@ -249,6 +249,7 @@ function render() {
   const a = $('actions');
   const was = document.activeElement, refocus = adrift(was) || a.contains(was);
   a.innerHTML = '';
+  $('center').classList.toggle('choosing', human && s.phase === 'move'); // see .center.choosing in the css
   if (!human) return;
   if (s.phase === 'roll') {
     const since = sinceLine(p);
@@ -1070,6 +1071,7 @@ function chart() {
 // that as a row of cards would need. The log then takes what's left, so no band of empty felt is left under it.
 const LOG_LOW = 44, LOG_HIGH = 92; // the log box's least height on a phone, and its height where the page scrolls, in px
 const TALL_MIN = 1140, TALL_MAX = 1400; // a phone's board height, in board units (it's 900 across)
+const SIDE_MIN = 230; // the least width beside the board for the players and the log on a phone held sideways, in px
 function fit() {
   const vw = innerWidth, vh = innerHeight, root = document.documentElement.style;
   const top = document.querySelector('.top').offsetHeight || 52, cards = $('players').offsetHeight || 62;
@@ -1077,7 +1079,14 @@ function fit() {
   const twoLines = Math.ceil(2 * 13 * 1.4 + 2 + 16); // two log lines, the gap between them and the log's padding
   const reserve = top + 10 + 10 + cards + 8 + twoLines + pad;
   let w, H;
-  if (vw >= 900) { H = 900; w = Math.min(vh - 70, vw - 400, 860); }
+  const sideways = vw > vh && vh <= 520;
+  if (sideways) {
+    // Held sideways (see the css for the same test): square, as tall as the screen inside its edges, with room beside it
+    // for the players and the log.
+    const cs = getComputedStyle($('app')), px = k => parseFloat(cs[k]) || 0;
+    H = 900;
+    w = Math.min(vh - px('paddingTop') - px('paddingBottom'), vw - px('paddingLeft') - px('paddingRight') - 12 - SIDE_MIN);
+  } else if (vw >= 900) { H = 900; w = Math.min(vh - 70, vw - 400, 860); }
   else if (vh / vw > 1.45) {
     // A phone held upright: the full width (up to 640 px), and the height the screen has room for.
     const room = vh - reserve;
@@ -1091,14 +1100,15 @@ function fit() {
   }
   w = Math.max(260, Math.floor(w));
   const h = Math.round(w * H / 900);
-  // Where even two lines can't fit (a phone held sideways), the page scrolls anyway, and the log keeps its height.
+  // Where even two lines can't fit, the page scrolls anyway, and the log keeps its height. (Held sideways, the log
+  // takes the height beside the board instead: see the css.)
   const left = vh - (reserve - twoLines) - h;
   root.setProperty('--logmax', (left >= LOG_LOW ? Math.floor(left) : LOG_HIGH) + 'px');
   root.setProperty('--bw', w + 'px');
   root.setProperty('--bh', h + 'px');
   root.setProperty('--ctop', (150 / H * 100) + '%');
   root.setProperty('--cheight', ((H - 300) / H * 100) + '%');
-  $('center').classList.toggle('snug', w < 360); // a small phone's board: see .center.snug
+  $('center').classList.toggle('snug', w < 360 || sideways); // a small phone's board, or a square one held sideways: see .center.snug
   view.setHeight(H);
 }
 addEventListener('resize', fit);
