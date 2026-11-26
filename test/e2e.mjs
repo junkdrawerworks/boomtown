@@ -773,6 +773,73 @@ await scene();
   await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
 }
 
+// Take it back, under the line in the middle, puts back the game as it was before the person's last choice on their
+// turn: a buy, leaving a lot for sale, a build, a move. Not a roll, nor a move that drew a Gazette headline, and it's
+// gone once the turn ends.
+{
+  const game = () => page.evaluate(() => { const s = window.boomtown.state; return JSON.stringify({ ...s, log: null }); });
+  const idle = () => page.waitForFunction(() => !window.boomtown.busy);
+  const link = () => page.$$eval('#actions .undo', b => b.map(x => x.textContent));
+  const MILL = "B.LOTS_IN.mill.forEach(i => { s.owner[i] = -1; s.level[i] = 0; });";
+  // A buy, then leaving it for sale: each taken back asks the question again, with nothing changed.
+  await scene(`${MILL} const i = B.LOTS_IN.mill[0]; s.players[0].pos = i; s.players[0].cash = 400; s.dice = [1, 2]; s.phase = 'decide'; s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };`);
+  await page.waitForSelector('#sheet [data-c="buy"]');
+  const asked = await game();
+  assert.deepEqual(await link(), [], 'Take it back is offered before any choice');
+  for (const c of ['buy', 'pass']) {
+    await page.click(`#sheet [data-c="${c}"]`);
+    await idle();
+    await page.waitForSelector('#actions .undo');
+    assert.notEqual(await game(), asked);
+    await page.click('#actions .undo');
+    await page.waitForSelector('#sheet [data-c="buy"]');
+    assert.equal(await game(), asked, `taking back ${c === 'buy' ? 'a buy' : 'leaving a lot for sale'} does not put the game back as it was`);
+    assert.match(await page.textContent('#say'), c === 'buy' ? /^You took back buying Tannery Lane\.$/ : /^You took back leaving Tannery Lane for sale\.$/);
+  }
+  await page.click('#sheet [data-c="buy"]');
+  await idle();
+  // A build, from Your lots: taken back, the lot and the cash are as they were, and the buy before it stands.
+  const bought = await game();
+  await page.click('#actions button:has-text("Build")');
+  await page.click('#sheet [data-build="1"]');
+  await idle();
+  await page.click('#sheet [data-close]');
+  assert.equal(await page.evaluate(() => window.boomtown.state.level[1]), 1);
+  await page.click('#actions .undo');
+  await idle();
+  assert.equal(await game(), bought, 'taking back a build does not put the game back as it was');
+  assert.deepEqual(await link(), [], 'Take it back goes back further than the last choice');
+  // A move: taken back, the piece is back with the same dice to move by. A move onto the Gazette, once its headline
+  // is read, can't be.
+  await scene(`${MILL} s.players[0].pos = 0; s.players[0].cash = 400; s.deck.unshift('lawn'); s.dice = [1, 2]; s.phase = 'move';`);
+  await page.waitForSelector('.move-btn');
+  const before = await game();
+  await page.click('.move-btn.detour >> nth=0');
+  await page.waitForSelector('#sheet [data-c="buy"]');
+  await page.click('#sheet [data-close]');
+  await page.click('#actions .undo');
+  await idle();
+  assert.equal(await game(), before, 'taking back a move does not put the game back as it was');
+  assert.equal(await page.$$eval('.move-btn', b => b.length), 3, 'taken back, the move is not to be made again');
+  await page.click('.move-btn.both');
+  await page.waitForSelector('#sheet [data-ok]');
+  await page.click('#sheet [data-ok]');
+  await idle();
+  assert.equal(await page.evaluate(() => window.boomtown.state.players[0].pos), 3);
+  assert.deepEqual(await link(), [], 'a move that drew a Gazette headline can be taken back');
+  // A roll can't be taken back, and the turn's end takes Take it back away: not offered in the townsfolk's turns.
+  await scene("s.phase = 'manage'; s.dice = [1, 2];");
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForFunction(() => window.boomtown.state.turn !== 0);
+  assert.deepEqual(await link(), [], 'Take it back is offered in the townsfolk\'s turn');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  assert.deepEqual(await link(), [], 'Take it back is offered from the turn before');
+  await page.click('#actions button:has-text("Roll the dice")');
+  await page.waitForSelector('.move-btn');
+  await idle();
+  assert.deepEqual(await link(), [], 'a roll can be taken back');
+}
+
 // A tap on the middle of the board during a townsperson's turn plays the rest of that turn at once, and the next one
 // at the usual pace: here Rusty is hurried and Mabel isn't. Hurry Rusty along, under the line, says so and does the same.
 await scene("s.phase = 'manage'; s.dice = [1, 2];");

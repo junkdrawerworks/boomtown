@@ -146,6 +146,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .center.snug .actions .since { font-size: 12px; line-height: 1.25; padding: 4px 7px; }
 /* While the townsfolk play: a small link under the line, Hurry Rusty along (the whole middle of the board does the same). */
 .actions .hurry { align-self: center; font-size: 13px; color: var(--muted); padding: 4px 10px; }
+/* Take it back: small, under the line in the middle, above the turn's buttons. */
+.actions .undo { align-self: center; font-size: 13px; padding: 2px 10px; margin: -2px 0 0; }
 .actions .row { display: flex; gap: 6px; }
 .actions .row > * { flex: 1; }
 .actions .row button { white-space: nowrap; }

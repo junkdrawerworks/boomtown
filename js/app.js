@@ -42,6 +42,7 @@ let unused = null;             // after a detour, which die (0 or 1) wasn't move
 let said = null;               // what the line in the middle last said (see setSay)
 let returnTo = null;           // where the focus was when a sheet opened, to go back to when it closes
 let shown = null;              // while a move plays out, the game as the screen has shown it so far (see shown.js)
+let takeBack = null;           // the game as it was before the person's last choice this turn, to take it back (see keep)
 const view = createBoard($('board'), { onCell: i => showSpace(i), onDest: i => onDest(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -236,6 +237,7 @@ function startGame(game, resumed = false, again = false) {
   // copy a move was being shown on, or a headline or banner still up.
   hurryAt = null;
   shown = null;
+  takeBack = null;
   clearTimeout(toastTimer); $('toast').hidden = true;
   clearTimeout(bannerTimer); $('banner').hidden = true;
   $('title').hidden = true;
@@ -294,6 +296,11 @@ function render() {
   if (s.phase !== 'over' && G.current(s).kind === 'bot') { hurryButton(a, refocus); return; }
   a.innerHTML = '';
   if (!human) return;
+  if (takeBack) {
+    const b = btn('Take it back', 'link undo', takeItBack);
+    b.setAttribute('aria-label', `Take back ${takeBack.what}`);
+    a.append(b);
+  }
   if (s.phase === 'roll') {
     const since = sinceLine(p);
     if (since) { const el = document.createElement('p'); el.className = 'since'; el.innerHTML = since; a.append(el); }
@@ -541,6 +548,7 @@ async function run() {
 
 async function onRoll() {
   const my = gen;
+  takeBack = null; // a roll is never taken back
   if (s.since) s.since[s.turn] = [];
   const before = copy(s);
   const ev = G.roll(s);
@@ -552,7 +560,9 @@ async function onRoll() {
 
 async function onMove(o) {
   const my = gen, before = copy(s);
+  keep('that move');
   const ev = G.move(s, o.steps, o.detour);
+  if (ev.some(e => e.t === 'card')) takeBack = null; // the Gazette's headline is read: the move stands
   save();
   note = '';
   await play(ev, my, before);
@@ -585,6 +595,7 @@ function landedNote(short = false) {
 
 async function onEndTurn() {
   const my = gen, before = copy(s);
+  takeBack = null;
   const ev = G.endTurn(s);
   save();
   await play(ev, my, before);
@@ -596,6 +607,9 @@ async function decideWith(choice) {
   closeSheet();
   const asked = { ...s.pending, p: s.turn, cash: G.current(s).cash };
   const before = copy(s);
+  // A rent with no forced sale to make instead has one answer, so there's nothing to take back: the copy kept before
+  // the move that landed there stays, and takes that back instead.
+  if (asked.kind !== 'rent' || (asked.buyout != null && asked.buyout <= asked.cash)) keep(choiceWords(asked, choice));
   const ev = G.decide(s, choice);
   if (humans() > 1) declined(asked, ev); // passing the phone, the others weren't looking
   save();
@@ -606,6 +620,7 @@ async function decideWith(choice) {
 
 async function doBuild(i) {
   const my = gen, before = copy(s);
+  keep(`building on ${SPACES[i].name}`);
   const ev = G.build(s, i);
   save();
   await play(ev, my, before);
@@ -614,10 +629,48 @@ async function doBuild(i) {
 
 async function doSell(i) {
   const my = gen, before = copy(s);
+  keep(`selling on ${SPACES[i].name}`);
   const ev = G.sell(s, i);
   save();
   await play(ev, my, before);
   render();
+}
+
+// ---------- take it back ----------
+// Before each choice a person makes on their turn (a move, buy or leave a lot, pay or make the owner sell, build, sell,
+// the Land Office's or a corner's pick) the game keeps a copy of itself, and Take it back, under the line in the middle,
+// puts it back: the one last choice, until the turn ends. A roll is never taken back, nor a move that drew a Gazette
+// headline. The game is one object with its own dice, so a copy put back can't roll anything differently. The
+// townsfolk never take anything back, and in a game of several people only the one whose turn it is can, their own.
+// `what` names the choice in words: 'buying Ferry Landing'.
+function keep(what) { takeBack = { game: JSON.stringify(s), what }; }
+function choiceWords(q, c) {
+  const at = typeof c === 'number' ? SPACES[c].name : '';
+  switch (q.kind) {
+    case 'buy': return c === 'buy' ? `buying ${SPACES[q.at].name}` : `leaving ${SPACES[q.at].name} for sale`;
+    case 'rent': return c === 'buyout' ? `making ${W.who(s.players[q.owner])} sell ${SPACES[q.at].name}` : 'paying the rent';
+    case 'office': case 'estate': return c === 'pass' ? 'buying nothing' : `buying ${at}`;
+    case 'yard': return c === 'pass' ? 'building nothing' : `building on ${at}`;
+    case 'hall': return `rezoning ${DISTRICT[c].name}`;
+  }
+  return 'that';
+}
+function takeItBack() {
+  if (!takeBack || busy || !isHumanTurn()) return;
+  const { game, what } = takeBack;
+  takeBack = null;
+  s = JSON.parse(game);
+  // The pieces go back where the copy has them, and a headline or banner from the choice comes down.
+  s.players.forEach((pl, p) => { view.shown[p] = pl.pos; });
+  clearTimeout(toastTimer); $('toast').hidden = true;
+  clearTimeout(bannerTimer); $('banner').hidden = true;
+  if (s.phase === 'move') unused = null;
+  const line = `${Who(s.turn)} took back ${esc(what)}.`;
+  addLog(line);
+  note = s.phase === 'move' ? `${line} Move by both dice, or take a detour by one.` : s.phase === 'manage' ? `${line} ${landedNote()}` : line;
+  save();
+  render();
+  if (s.phase === 'decide') askDecision();
 }
 
 // Show a list of events: move the pieces, float the money, read the Gazette, and write it all in the log. `before` is
