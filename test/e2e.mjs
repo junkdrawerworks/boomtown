@@ -174,9 +174,18 @@ assert.equal(await page.isVisible('#sheet .chart'), true);
     "the Gazette covers Founders' Day's ✕");
   assert.match(await page.getAttribute('#sheet .chart', 'aria-label'), /round by round\. (You|Mabel) ended on −?\$[\d,]+, (You|Mabel) on −?\$[\d,]+\.$/, "the chart doesn't say where each player ended");
 }
+const firstGame = await page.evaluate(() => window.boomtown.state.players.map(p => [p.name, p.token, p.history[0]]));
 await page.click('#sheet [data-a="again"]');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
 assert.equal(await page.textContent('#round'), 'Round 1 of 18', 'Play again starts a new game');
+// Play again moves who goes first one seat round the table: Mabel starts this time, with the first seat's cash, and
+// everyone keeps their piece.
+{
+  const [[you, yours, least], [mabel, hers, more]] = firstGame;
+  assert.deepEqual(await page.evaluate(() => window.boomtown.state.players.map(p => [p.name, p.token, p.history[0]])), [[mabel, hers, least], [you, yours, more]],
+    'Play again does not move who goes first round the table');
+  assert.ok((await page.evaluate(() => window.boomtown.state.log)).includes('A new game: 18 rounds, 2 players. Mabel goes first this time.'), "the log doesn't say who goes first");
+}
 assert.equal(await sheetOpen(), false, "Founders' Day stays open over the new game");
 assert.equal(await page.$eval('#app', el => el.inert), false, "the new game is inert after Founders' Day's sheet");
 

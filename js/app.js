@@ -192,7 +192,7 @@ $('resumeBtn').addEventListener('click', () => {
 $('rulesBtn').addEventListener('click', showRules);
 $('recordsBtn').addEventListener('click', showRecords);
 
-function startGame(game, resumed = false) {
+function startGame(game, resumed = false, again = false) {
   s = game;
   s.log ||= [];
   gen++;
@@ -201,8 +201,9 @@ function startGame(game, resumed = false) {
   $('title').hidden = true;
   $('app').hidden = false;
   view.reset();
-  note = resumed ? `Back in Boomtown. ${whoseTurn()}` : 'Ground broken. Every lot is for sale.';
-  if (!resumed) { addLog(`A new game: ${s.rounds} rounds, ${s.players.length} players.`); addLog(`Round ${s.round}`); save(); }
+  const first = again ? ` ${Who(0)} ${agree(0, 'go', 'goes')} first this time.` : '';
+  note = resumed ? `Back in Boomtown. ${whoseTurn()}` : `Ground broken. Every lot is for sale.${first}`;
+  if (!resumed) { addLog(`A new game: ${s.rounds} rounds, ${s.players.length} players.${first}`); addLog(`Round ${s.round}`); save(); }
   render();
   fit(); // now the players' cards can be measured
   run();
@@ -1029,8 +1030,11 @@ function finish() {
     <h3>Worth, round by round</h3>${chart()}
     <div class="buttons"><button class="primary" data-a="again">Play again</button><button class="secondary" data-a="title">Change players</button><button class="ghost" data-a="board">Look at the town</button></div>`, { closable: true, onClose: toTown });
   body.querySelector('[data-a="again"]').addEventListener('click', () => {
+    // Who goes first moves one seat round the table each game, so the same player doesn't always start, with the
+    // least cash. Everyone keeps their piece.
     const seats = s.players.map(p => ({ name: p.name, kind: p.kind, bot: p.bot, token: p.token }));
-    startGame(G.newGame({ seats, rounds: s.rounds }));
+    seats.push(seats.shift());
+    startGame(G.newGame({ seats, rounds: s.rounds }), false, true);
   });
   body.querySelector('[data-a="title"]').addEventListener('click', () => { store.del(KEY); showTitle(); });
   body.querySelector('[data-a="board"]').addEventListener('click', () => { closeSheet(); toTown(); });
