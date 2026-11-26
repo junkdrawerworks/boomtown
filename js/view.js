@@ -4,7 +4,7 @@
 import { SPACES, DISTRICT, N, cellRect, SIZE } from './board.js';
 import { landValue, rentFor, LEVEL_NAMES, RULES } from './game.js';
 import * as art from './art.js';
-import { Whose } from './words.js';
+import { Whose, SAYS } from './words.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 export const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the person asked for less motion
@@ -220,7 +220,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
         break;
       case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
       case 'yard': drawing = art.lumber; tag = `<text class="tiny">BUILD ½</text>`; label = 'Lumberyard: build one level at half price.'; break;
-      case 'tax': drawing = art.assessor; label = 'Assessor: pay for every building level you own.'; break;
+      case 'tax': drawing = art.assessor; label = `Assessor: pay ${SAYS.tax}.`; break;
       case 'payday': drawing = art.payday; label = `Payday: collect ${usd(RULES.salary)} passing, ${usd(RULES.salary + RULES.landBonus)} landing.`; break;
       case 'office': drawing = art.office; label = 'Land Office: buy any empty lot.'; break;
       case 'square': drawing = art.square; label = `Town Square: take the kitty, ${usd(s.kitty)}.`; break;

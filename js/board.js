@@ -49,16 +49,16 @@ export const OWNABLE = SPACES.map((s, i) => (s.type === 'lot' || s.type === 'dep
 export const LOTS_IN = Object.fromEntries(DISTRICTS.map(d => [d.id, SPACES.map((s, i) => (s.district === d.id ? i : -1)).filter(i => i >= 0)]));
 export const DEPOTS = SPACES.map((s, i) => (s.type === 'depot' ? i : -1)).filter(i => i >= 0);
 
-// What each kind of space does, in a line, for the space sheet and How to play.
+// What each kind of space does, in a line, for its sheet. (A depot opens a lot's sheet, with its rents.) Amounts from
+// RULES are added where the sheet is drawn, in app.js, since this file can't import game.js.
 export const SPACE_HELP = {
   payday: 'Collect your pay each time you pass. Land here exactly for a bonus on top.',
   gazette: 'Read the town paper. Headlines move land values, pay out or cost you.',
-  depot: 'A railway depot. Rent doubles when one player owns both.',
   office: 'Buy any empty lot or depot in town at its price, if you want one.',
   yard: 'Build one level on one of your lots at half price.',
   square: 'Take everything in the kitty: fines and taxes paid since someone last stopped here.',
   hall: 'Rezone a district: its land goes up 20%.',
-  tax: 'The assessor charges you for every building level you own. It goes in the kitty.',
+  tax: 'The town assessor comes round.',
 };
 
 // Board geometry: 900 units wide, corners 150 square, six spaces of 100 between corners along the top and bottom.

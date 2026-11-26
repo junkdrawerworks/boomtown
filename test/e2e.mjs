@@ -307,6 +307,16 @@ await page.click('#board .cell[data-i="17"]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');
 await page.click('#sheet [data-close]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 0, 'the ring stays after the sheet closes');
+// The Assessor's sheet, and the board as a screen reader hears it, say what it charges.
+{
+  const { taxPerLevel, taxMin } = await page.evaluate(() => window.boomtown.G.RULES);
+  const charge = `$${taxPerLevel} for every building level you own, and never less than $${taxMin}, into the kitty.`;
+  const tax = await page.evaluate(() => [...document.querySelectorAll('#board .cell')].find(c => /^Assessor/.test(c.getAttribute('aria-label')))?.dataset.i);
+  assert.ok((await page.getAttribute(`#board .cell[data-i="${tax}"]`, 'aria-label')).includes(`Assessor: pay ${charge}`), "the Assessor's label doesn't say what it charges");
+  await page.click(`#board .cell[data-i="${tax}"]`);
+  assert.ok((await page.textContent('#sheet')).includes(`Pay ${charge}`), "the Assessor's sheet doesn't say what it charges");
+  await page.click('#sheet [data-close]');
+}
 
 // The person playing the townsfolk alone is called You, and the game talks to them: a lot of theirs is "Your house",
 // on the board and on its sheet, never "You's house" or "You owns".

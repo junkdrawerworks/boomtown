@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../js/game.js';
 import { botStep, BOTS, chooseDecision, scoreSpace } from '../js/bots.js';
-import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS, DISTRICTS } from '../js/board.js';
+import { readFileSync } from 'node:fs';
+import { SPACES, LOTS_IN, OWNABLE, N, DEPOTS, DISTRICTS, SPACE_HELP } from '../js/board.js';
 import { CARDS } from '../js/cards.js';
 import * as W from '../js/words.js';
 
@@ -419,6 +420,23 @@ test("a townsperson reckons the Estate sale's half price to the $5, as the sale 
   t.players[0].cash = 38;
   t.pending = { kind: 'estate' }; t.phase = 'decide';
   assert.doesNotThrow(() => G.decide(t, chooseDecision(t)));
+});
+
+// The words quote the numbers the rules use. How to play and the sheets are written from RULES, the README by hand, so
+// a change to RULES that leaves the text behind fails here.
+test('the rules text quotes the numbers in RULES', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8'), rules = W.rulesHtml();
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'B', kind: 'human', token: 1 }], seed: 1 });
+  const facts = W.lotFacts(s, LOTS_IN.mill[0]);
+  const street = `${Math.round(G.RULES.street * 100)}%`;
+  for (const [where, text] of [['How to play', rules], ['README', readme], ['a lot sheet', facts]]) {
+    if (G.RULES.street !== 0.25) assert.doesNotMatch(text, /a quarter/, `${where} says a building adds a quarter, but RULES.street is ${G.RULES.street}`);
+    assert.ok(text.includes(`with a building on it adds ${street} to the rent of the other lots there`), `${where} doesn't give the street's bonus as ${street} for each lot built on`);
+  }
+  const [, one, both] = G.RULES.depotRent;
+  if (both !== 2 * one) assert.doesNotMatch(SPACE_HELP.depot ?? '', /doubles/, `depot rent goes ${one} -> ${both}`);
+  assert.ok(W.SAYS.tax.includes(`$${G.RULES.taxPerLevel} for every building level`), 'the Assessor help gives the charge per level');
+  assert.ok(W.SAYS.tax.includes(`never less than $${G.RULES.taxMin},`), 'the Assessor help gives the least it charges');
 });
 
 // Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the

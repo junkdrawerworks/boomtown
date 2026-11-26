@@ -745,6 +745,7 @@ function showSpace(i) {
     }
   } else {
     h = `<h2 id="sheetTitle">${esc(sp.name)}</h2><p>${SPACE_HELP[sp.type]}</p>`;
+    if (sp.type === 'tax') h += `<p>Pay ${W.SAYS.tax}.</p>`;
     if (sp.type === 'square') h += `<p>The kitty holds <b>${money(s.kitty)}</b>.</p>`;
     if (sp.type === 'payday') h += `<p>Pay is ${money(G.RULES.salary)}, or ${money(G.RULES.salary + G.RULES.landBonus)} for landing on it. Passing it also gives back a detour, and adds interest to any loan.</p>`;
   }
@@ -946,33 +947,7 @@ $('logBtn').addEventListener('click', () => {
 });
 
 function showRules() {
-  openSheet(`<div class="rules"><h2 id="sheetTitle">How to play</h2>
-    <p>Boomtown is a town that isn't built yet. Go round the board buying lots and building on them. When the last round ends it's Founders' Day, and whoever is worth the most wins: cash, plus land, plus buildings, less any loan.</p>
-    <h3>Your turn</h3>
-    <ul>
-      <li><b>Roll two dice and move by both.</b> Or take a <b>detour</b> and move by just one of them. You have two detours; passing Payday gives one back.</li>
-      <li><b>Land on a lot for sale</b> and you can buy it.</li>
-      <li><b>Land on someone else's lot</b> and you pay them rent. If nothing is built on it and they don't own the whole district, you can make them sell it to you instead, for ${G.RULES.buyout} times the land value.</li>
-      <li><b>Then build</b> on any of your lots: a house, then a shop, then a block. A block needs all three lots in the district.</li>
-      <li><b>Whoever goes later starts with a little more:</b> ${money(G.RULES.seatBonus)} for each seat after the first.</li>
-    </ul>
-    <h3>How the town grows</h3>
-    <ul>
-      <li><b>Every building lifts the street.</b> It raises the land value of its whole district, and adds a quarter to the rent of the other lots there, whoever owns them.</li>
-      <li><b>Own a whole district</b> and its rents go up: double on empty lots, and half as much again on built ones.</li>
-      <li><b>The Gazette</b> brings news: a district booms or busts, a fair pays out, the pipes burst.</li>
-    </ul>
-    <h3>The corners</h3>
-    <ul>
-      <li><b>Payday:</b> ${money(G.RULES.salary)} as you pass, ${money(G.RULES.salary + G.RULES.landBonus)} if you land on it.</li>
-      <li><b>Land Office:</b> buy any empty lot in town.</li>
-      <li><b>Town Square:</b> take the kitty, where fines and taxes collect.</li>
-      <li><b>City Hall:</b> rezone a district, putting its land up 20%.</li>
-    </ul>
-    <h3>Running short</h3>
-    <ul>
-      <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and adds 10% each time you pass Payday. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
-    </ul></div>`);
+  openSheet(W.rulesHtml());
 }
 
 function showRecords() {

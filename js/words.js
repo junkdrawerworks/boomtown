@@ -18,6 +18,14 @@ export const Whose = pl => (isYou(pl) ? 'Your' : `${pl.name}'s`);
 // The verb to go with them: agree(pl, 'own', 'owns').
 export const agree = (pl, you, they) => (isYou(pl) ? you : they);
 
+// The rules in words, built from RULES so the text can't fall behind the numbers: How to play, the sheets and the
+// board's labels say them the same way.
+const R = G.RULES;
+export const SAYS = {
+  street: `each lot with a building on it adds ${Math.round(R.street * 100)}% to the rent of the other lots there, whoever owns them`,
+  tax: `${money(R.taxPerLevel)} for every building level you own, and never less than ${money(R.taxMin)}, into the kitty`,
+};
+
 export const swatch = d => `<span class="swatch" style="background:${DISTRICT[d].color}"></span>`;
 
 // What lot i would rent for at `level`, with `owner` owning it (a lot for sale reckoned as if bought), built up to
@@ -67,11 +75,42 @@ export function lotFacts(s, i, { warn = false } = {}) {
     const lots = LOTS_IN[d];
     const owners = lots.map(j => s.owner[j]);
     const built = lots.filter(j => s.level[j] > 0).length;
-    h += `<p class="note">Land here is at ${Math.round(s.land[d] * 100)}% of its first price. Every building on ${DISTRICT[d].name} raises the land and adds a quarter to the rent of the lots beside it.`;
+    h += `<p class="note">Land here is at ${Math.round(s.land[d] * 100)}% of its first price. Every building on ${DISTRICT[d].name} raises the land, and ${SAYS.street}.`;
     if (o >= 0 && owners.every(x => x === o)) h += ` ${esc(Who(pl))} ${agree(pl, 'own', 'owns')} all of ${DISTRICT[d].name}, so rent is up and blocks can go up.`;
     else h += ` Own all three to build blocks.`;
     if (built) h += ` ${built} of 3 lots built on.`;
     h += '</p>';
   }
   return h;
+}
+
+// How to play.
+export function rulesHtml() {
+  return `<div class="rules"><h2 id="sheetTitle">How to play</h2>
+    <p>Boomtown is a town that isn't built yet. Go round the board buying lots and building on them. When the last round ends it's Founders' Day, and whoever is worth the most wins: cash, plus land, plus buildings, less any loan.</p>
+    <h3>Your turn</h3>
+    <ul>
+      <li><b>Roll two dice and move by both.</b> Or take a <b>detour</b> and move by just one of them. You have two detours; passing Payday gives one back.</li>
+      <li><b>Land on a lot for sale</b> and you can buy it.</li>
+      <li><b>Land on someone else's lot</b> and you pay them rent. If nothing is built on it and they don't own the whole district, you can make them sell it to you instead, for ${R.buyout} times the land value.</li>
+      <li><b>Then build</b> on any of your lots: a house, then a shop, then a block. A block needs all three lots in the district.</li>
+      <li><b>Whoever goes later starts with a little more:</b> ${money(R.seatBonus)} for each seat after the first.</li>
+    </ul>
+    <h3>How the town grows</h3>
+    <ul>
+      <li><b>Every building lifts the street.</b> It raises the land value of its whole district, and ${SAYS.street}.</li>
+      <li><b>Own a whole district</b> and its rents go up: double on empty lots, and half as much again on built ones.</li>
+      <li><b>The Gazette</b> brings news: a district booms or busts, a fair pays out, the pipes burst.</li>
+    </ul>
+    <h3>The corners</h3>
+    <ul>
+      <li><b>Payday:</b> ${money(R.salary)} as you pass, ${money(R.salary + R.landBonus)} if you land on it.</li>
+      <li><b>Land Office:</b> buy any empty lot in town.</li>
+      <li><b>Town Square:</b> take the kitty, where fines and taxes collect.</li>
+      <li><b>City Hall:</b> rezone a district, putting its land up 20%.</li>
+    </ul>
+    <h3>Running short</h3>
+    <ul>
+      <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and adds 10% each time you pass Payday. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
+    </ul></div>`;
 }

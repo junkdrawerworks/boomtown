@@ -16,7 +16,7 @@
 
 - **Pick your move.** Roll two dice and move by both, or spend a detour to move by just one. You start with two detours and get one back each time you pass Payday, so you can dodge the worst rents, but not every time.
 - **Buy, then build.** Land on a lot for sale and you can buy it. On your turn you can build on your lots: a house, then a shop, then a block. A block needs the whole district.
-- **The street rises together.** Each building raises the land value of its district and adds a quarter to the rent of the other lots there, whoever owns them. Owning a whole district doubles the rent on its empty lots.
+- **The street rises together.** Each building raises the land value of its district, and each lot with a building on it adds 30% to the rent of the other lots there, whoever owns them. Owning a whole district doubles the rent on its empty lots.
 - **Make them sell.** Land on a rival's lot with nothing built on it, and if they don't own the whole district, you can make them sell it to you at one and a half times its land value instead of paying rent.
 - **The corners.** Payday pays $150 as you pass and $250 if you land on it. The Land Office sells you any empty lot. Town Square pays out the kitty, where fines and taxes collect. City Hall rezones a district, putting its land up 20%.
 - **The Gazette.** Headlines move land values up and down, pay out at the county fair, or burst your pipes.
