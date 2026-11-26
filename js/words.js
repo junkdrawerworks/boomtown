@@ -126,5 +126,6 @@ export function rulesHtml() {
     <h3>Running short</h3>
     <ul>
       <li><b>Nobody goes out.</b> If you can't pay, the bank lends you the rest and ${SAYS.interest}. Money coming in pays it off first. You can sell buildings back for half what they cost.</li>
-    </ul></div>`;
+    </ul>
+    <p class="note">While the townsfolk play, a tap on a space shows it, and a tap on the middle of the board hurries them along.</p></div>`;
 }

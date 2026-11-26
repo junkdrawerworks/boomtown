@@ -253,23 +253,30 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       (piece == null ? '' : `<g class="owner" transform="translate(${Math.round(-w / 2 + 2 + d / 2)} -1) scale(${(d / 37).toFixed(3)})">${art.token(piece, '#fffaf0')}</g>`);
   };
 
-  // Hop a piece along a path of spaces.
-  view.animateMove = async (s, p, path, msPerStep = 140) => {
+  // Hop a piece along a path of spaces. Once `hurry()` says so, it jumps the rest of the way (see rush()).
+  let hopping = [];
+  view.animateMove = async (s, p, path, msPerStep = 140, hurry = () => false) => {
     const el = view.tokenEls[p];
     if (!el) return;
     for (const at of path) {
       const [x0, y0] = tokenPos(p, view.shown[p], s.players);
       view.shown[p] = at;
       const to = tokenPos(p, at, s.players), [x1, y1] = to;
-      if (msPerStep > 0) {
+      if (msPerStep > 0 && !hurry()) {
         const lift = el.querySelector('.lift');
-        lift.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-22px)' }, { transform: 'translateY(0)' }], { duration: msPerStep, easing: 'ease-out' });
-        await el.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${x1}px, ${y1}px)` }], { duration: msPerStep, easing: 'ease-in-out' }).finished;
+        hopping = [
+          lift.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-22px)' }, { transform: 'translateY(0)' }], { duration: msPerStep, easing: 'ease-out' }),
+          el.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${x1}px, ${y1}px)` }], { duration: msPerStep, easing: 'ease-in-out' }),
+        ];
+        await hopping[1].finished;
+        hopping = [];
       }
       putToken(el, to);
     }
     view.placeTokens(s);
   };
+  // Cut short the hop under way: the piece goes on by jumping.
+  view.rush = () => hopping.forEach(a => a.finish());
 
   view.jump = (s, p, at) => { view.shown[p] = at; view.placeTokens(s); };
 

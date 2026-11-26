@@ -675,6 +675,32 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');
 }
 
+// A tap on the middle of the board during a townsperson's turn plays the rest of that turn at once, and the next one
+// at the usual pace: here Rusty is hurried and Mabel isn't. Hurry Rusty along, under the line, says so and does the same.
+await scene("s.phase = 'manage'; s.dice = [1, 2];");
+{
+  await page.evaluate(() => {
+    window.turns = [];
+    let at = null;
+    const look = () => { const s = window.boomtown.state; if (s.turn !== at) { at = s.turn; window.turns.push([at, performance.now()]); } requestAnimationFrame(look); };
+    look();
+  });
+  await page.click('#actions button:has-text("End turn")');
+  await page.waitForFunction(() => window.boomtown.state.turn === 1 && window.boomtown.busy, null, { timeout: 10000 });
+  assert.equal(await page.textContent('#actions .hurry'), 'Hurry Rusty along');
+  const box = await page.$eval('.board-wrap', el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height * 0.4 }; });
+  const tapped = await page.evaluate(() => performance.now());
+  await page.mouse.click(box.x, box.y);
+  assert.equal(await sheetOpen(), false, 'a tap on the middle of the board opened a sheet');
+  await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  const turns = await page.evaluate(() => window.turns);
+  const when = seat => turns.find(([p]) => p === seat)?.[1];
+  const rusty = when(2) - tapped, mabel = when(3) - when(2);
+  assert.ok(rusty < mabel / 2, `hurried, the rest of Rusty's turn took ${Math.round(rusty)} ms, and Mabel's whole turn ${Math.round(mabel)} ms`);
+  assert.ok(mabel > 600, `Mabel's turn was hurried too: ${Math.round(mabel)} ms`);
+  assert.ok((await page.evaluate(() => window.boomtown.state.log.join(' '))).includes('Rusty rolled'), "the log doesn't say what Rusty did");
+}
+
 // In the menu one tap on Sound or Pace changes it once, however many times the menu has been opened. (Opened twice,
 // both end where they started.)
 await scene();

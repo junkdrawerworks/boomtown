@@ -46,6 +46,28 @@ const view = createBoard($('board'), { onCell: i => showSpace(i), onDest: i => o
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const pace = () => (prefs.speed === 'fast' ? 0.35 : 1);
+
+// A tap on the middle of the board, or on Hurry … along under the line there, during a townsperson's turn plays the
+// rest of that turn at once: no pauses and no sounds, and the piece jumps to where it ends up. The money still floats,
+// the log and the cards still say what happened, and a headline still shows a moment. Their next turn goes at the usual
+// pace again.
+let hurryAt = null; // the turn that was hurried, as `round:seat`
+const turnKey = () => `${s.round}:${s.turn}`;
+const hurried = () => !!s && hurryAt === turnKey();
+const wakers = new Set(); // the pauses under way, which a hurry cuts short
+// A pause in the play of a turn, which a hurry cuts short or skips.
+const nap = ms => (hurried() ? Promise.resolve() : new Promise(r => {
+  const done = () => { clearTimeout(t); wakers.delete(done); r(); };
+  const t = setTimeout(done, ms);
+  wakers.add(done);
+}));
+const hush = Object.fromEntries(Object.keys(sfx).map(k => [k, () => {}]));
+function hurry() {
+  if (!s || s.phase === 'over' || G.current(s).kind !== 'bot' || hurried()) return;
+  hurryAt = turnKey();
+  [...wakers].forEach(w => w());
+  view.rush();
+}
 const { money, esc } = W;
 const nm = p => esc(s.players[p].name);
 // A player in a sentence, by seat: 'you' or 'Rusty' in the middle of one, 'You' or 'Rusty' at the start, and 'your' or
@@ -252,8 +274,9 @@ function render() {
   // unless the person is somewhere else (a space on the board, a sheet).
   const a = $('actions');
   const was = document.activeElement, refocus = adrift(was) || a.contains(was);
-  a.innerHTML = '';
   $('center').classList.toggle('choosing', human && s.phase === 'move'); // see .center.choosing in the css
+  if (s.phase !== 'over' && G.current(s).kind === 'bot') { hurryButton(a, refocus); return; }
+  a.innerHTML = '';
   if (!human) return;
   if (s.phase === 'roll') {
     const since = sinceLine(p);
@@ -287,6 +310,25 @@ function render() {
   }
   if (refocus && $('sheetWrap').hidden) focusMain();
 }
+
+// While a townsperson plays, the one button in the middle hurries them along (see hurry()). It's kept from one redraw
+// to the next, and from one townsperson to the next, so the focus stays on it: Enter again hurries the next one.
+function hurryButton(a, refocus) {
+  let b = a.querySelector('.hurry');
+  if (!b || a.children.length !== 1) {
+    a.innerHTML = '';
+    b = document.createElement('button');
+    b.className = 'link hurry'; // its tap is the board's (see the board's listener below)
+    a.append(b);
+  }
+  const text = `Hurry ${G.current(s).name} along`;
+  if (b.textContent !== text) b.textContent = text;
+  if (refocus && $('sheetWrap').hidden && document.activeElement !== b) b.focus({ preventScroll: true });
+}
+// A tap on the board that isn't on a space (whose sheet it opens) or on another button hurries the townsfolk.
+document.querySelector('.board-wrap').addEventListener('click', e => {
+  if (!e.target.closest('.cell, .badge, a, button:not(.hurry)')) hurry();
+});
 
 function btn(text, cls, fn, main = false) {
   const b = document.createElement('button');
@@ -431,7 +473,7 @@ async function run() {
   const my = gen;
   while (s && s.phase !== 'over' && G.current(s).kind === 'bot') {
     if (s.phase === 'roll') { note = whoseTurn(); render(); }
-    await wait((s.phase === 'roll' ? 550 : s.phase === 'manage' ? 380 : 520) * pace());
+    await nap((s.phase === 'roll' ? 550 : s.phase === 'manage' ? 380 : 520) * pace());
     if (my !== gen) return;
     // A sheet the person opened (a lot, the menu) holds the townsfolk until it's closed, so what it says stays true.
     // Only one the person can close: the townsfolk never wait on a sheet nobody can shut.
@@ -547,29 +589,30 @@ async function play(events, my = gen, before = null) {
     for (const e of events) {
       if (my !== gen) return;
       if (shown) { step(shown, e); render(); }
+      const sf = hurried() ? hush : sfx;
       const line = describe(e);
       addLog(line);
       noteSince(e);
       switch (e.t) {
         case 'roll': {
-          sfx.dice();
+          sf.dice();
           unused = null;
           drawDice(shown || s);
           const d = $('dice');
           d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
           note = line;
           setSay(note);
-          await wait(500 * k);
+          await nap(500 * k);
           break;
         }
         case 'detour': note = line; setSay(note); detour = true; break;
         case 'move': {
-          const ms = calm() ? 0 : (bot ? 120 : 140) * k;
+          const ms = calm() || hurried() ? 0 : (bot ? 120 : 140) * k;
           const steps = e.path.length;
           if (detour && s.dice) { unused = s.dice[0] === steps ? 1 : 0; detour = false; drawDice(shown || s); } // dim the other die
-          if (ms) for (let j = 0; j < steps; j++) setTimeout(() => sfx.hop(), j * ms);
-          else sfx.hop();
-          await view.animateMove(s, e.p, e.path, ms);
+          if (ms) for (let j = 0; j < steps; j++) setTimeout(() => sf.hop(), j * ms);
+          else sf.hop();
+          await view.animateMove(s, e.p, e.path, ms, hurried);
           // Where the townsfolk went, for anyone listening rather than watching.
           if (bot) { note = `${nm(e.p)} to ${place(e.path[steps - 1])}.`; setSay(note); }
           break;
@@ -577,9 +620,9 @@ async function play(events, my = gen, before = null) {
         case 'collect':
           if (e.why === 'selling up') break;
           view.float(s.players[e.p].pos, `+${money(e.amount)}`, '#1f7a46');
-          if (e.why.startsWith('Payday')) sfx.payday(); else sfx.coin();
+          if (e.why.startsWith('Payday')) sf.payday(); else sf.coin();
           note = line || note; render();
-          await wait(450 * k);
+          await nap(450 * k);
           break;
         case 'pay':
           if (e.to === 'bank') break; // a purchase: the buy or build event shows it
@@ -589,25 +632,25 @@ async function play(events, my = gen, before = null) {
             // Rent and forced sales: out of one piece and, a beat later, into the other. A person hears the coin when
             // the money comes to them from one of the townsfolk.
             const to = e.to, kind = p => s.players[p].kind;
-            if (kind(to) === 'human' && kind(e.from) !== 'human') sfx.coin(); else sfx.pay();
+            if (kind(to) === 'human' && kind(e.from) !== 'human') sf.coin(); else sf.pay();
             setTimeout(() => { if (my !== gen) return; view.float(s.players[to].pos, `+${money(e.amount)}`, '#1f7a46'); flashCard(to); }, 250 * k);
-          } else sfx.pay();
-          await wait(600 * k);
+          } else sf.pay();
+          await nap(600 * k);
           break;
-        case 'loan': note += ` ${line}`; render(); await wait(400 * k); break;
+        case 'loan': note += ` ${line}`; render(); await nap(400 * k); break;
         case 'buy': case 'buyout':
-          sfx.stamp(); render(); view.pop(e.at); note = line; setSay(note);
+          sf.stamp(); render(); view.pop(e.at); note = line; setSay(note);
           // A person made to sell gets long enough to read it.
-          await wait((e.t === 'buyout' && s.players[e.from].kind === 'human' ? 1200 : 550) * k);
+          await nap((e.t === 'buyout' && s.players[e.from].kind === 'human' ? 1200 : 550) * k);
           break;
         case 'build': case 'sell':
-          if (e.t === 'build') sfx.build(); else sfx.pay();
+          if (e.t === 'build') sf.build(); else sf.pay();
           render(); view.pop(e.at); note = line; setSay(note);
-          await wait(500 * k);
+          await nap(500 * k);
           break;
         case 'land': render(); break;
         case 'card': {
-          sfx.paper();
+          sf.paper();
           render();
           // The townsfolk's news shows as a toast, which is read out itself: the line in the middle doesn't say it again.
           if (bot || !isHumanTurn()) await toastCard(e.card, 2400 * k);
@@ -615,11 +658,11 @@ async function play(events, my = gen, before = null) {
           break;
         }
         case 'kitty': note = line; render(); break;
-        case 'left': case 'spared': note = line; setSay(note); await wait(550 * k); break;
-        case 'rezone': sfx.stamp(); note = line; render(); await wait(500 * k); break;
+        case 'left': case 'spared': note = line; setSay(note); await nap(550 * k); break;
+        case 'rezone': sf.stamp(); note = line; render(); await nap(500 * k); break;
         case 'interest': case 'repaid': render(); break;
         case 'turn': if (e.p === 0) addLog(`Round ${e.round}`); note = whoseTurn(); break;
-        case 'over': sfx.end(); break;
+        case 'over': sf.end(); break;
       }
     }
   } finally {
@@ -978,7 +1021,7 @@ function toastCard(id, ms) {
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
-  return wait(Math.min(ms, 1600 * pace()));
+  return nap(Math.min(ms, 1600 * pace()));
 }
 
 // ---------- the menu, the log, the rules ----------

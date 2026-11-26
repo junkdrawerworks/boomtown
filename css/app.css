@@ -133,6 +133,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .actions:has(.since) { flex: 0 1 auto; min-height: 0; }
 .actions .since { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .center.snug .actions .since { font-size: 12px; line-height: 1.25; padding: 4px 7px; }
+/* While the townsfolk play: a small link under the line, Hurry Rusty along (the whole middle of the board does the same). */
+.actions .hurry { align-self: center; font-size: 13px; color: var(--muted); padding: 4px 10px; }
 .actions .row { display: flex; gap: 6px; }
 .actions .row > * { flex: 1; }
 .actions .row button { white-space: nowrap; }
