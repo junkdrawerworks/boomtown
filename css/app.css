@@ -106,6 +106,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes breathe { 50% { transform: scale(1.15); } }
 /* Pieces and flourishes sit over the spaces but take no taps: a tap on a piece reaches the space it stands on. */
 #board .tokens, #board .fx { pointer-events: none; }
+/* Founders' Day's bunting, strung across the top of the middle of the board. */
+#board .bunting { pointer-events: none; animation: hang .7s cubic-bezier(.3, 1.4, .5, 1); }
+#board .bunting .rope { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+#board .bunting .flag { stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+@keyframes hang { from { transform: translateY(-40px); opacity: 0; } }
 #board .focus-ring { fill: none; stroke: var(--brick); stroke-width: 6; pointer-events: none; }
 
 /* the middle of the board: dice, a line of news, the buttons */

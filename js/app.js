@@ -510,7 +510,13 @@ async function run() {
     if (my !== gen) return;
   }
   if (my !== gen || !s) return;
-  if (s.phase === 'over') { render(); finish(); return; }
+  if (s.phase === 'over') {
+    // A moment on the finished town, bunting up, before the special edition.
+    render();
+    await wait(1200);
+    if (my === gen) celebrate();
+    return;
+  }
   if (s.phase === 'roll') note = whoseTurn();
   render();
   if (s.phase === 'decide') askDecision();
@@ -702,7 +708,7 @@ async function play(events, my = gen, before = null) {
         case 'rezone': sf.stamp(); note = line; render(); await nap(500 * k); break;
         case 'interest': case 'repaid': render(); break;
         case 'turn': if (e.p === 0) addLog(`Round ${e.round}`); note = whoseTurn(); break;
-        case 'over': sf.end(); break;
+        case 'over': note = line; setSay(note); break;
       }
     }
   } finally {
@@ -1129,6 +1135,11 @@ function showRecords() {
 }
 
 // ---------- Founders' Day ----------
+// The tune, then the special edition.
+function celebrate() {
+  sfx.end();
+  finish();
+}
 function finish() {
   const st = G.standings(s);
   const winner = s.players[st[0].p];

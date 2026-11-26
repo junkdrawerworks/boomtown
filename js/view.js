@@ -50,6 +50,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     <g class="marks" aria-hidden="true"></g>
     <g class="tokens" aria-hidden="true"></g>
     <g class="marks-top" aria-hidden="true"></g>
+    <g class="bunting" aria-hidden="true"></g>
     <g class="kbd" aria-hidden="true"></g>
     <g class="fx" aria-hidden="true"></g>`;
   // Layers, bottom up: the spaces, the frame, a move's outline and build badges, the pieces, a move's number badge (over
@@ -57,7 +58,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
   // who's on them and where a move lands (see drawCell), so the layers over them are hidden from screen readers: they'd
   // only add stray numbers.
   const cellsG = svg.querySelector('.cells'), marksG = svg.querySelector('.marks'), topG = svg.querySelector('.marks-top');
-  const tokensG = svg.querySelector('.tokens'), kbdG = svg.querySelector('.kbd'), fxG = svg.querySelector('.fx');
+  const tokensG = svg.querySelector('.tokens'), kbdG = svg.querySelector('.kbd'), fxG = svg.querySelector('.fx'), buntingG = svg.querySelector('.bunting');
   const cells = [];
   // The keyboard's ring on a space is drawn in its own layer over the frame and the pieces, which would cover most of
   // a ring drawn on the space itself.
@@ -187,6 +188,8 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     }
     marksG.innerHTML = m;
     topG.innerHTML = top;
+    const over = s.phase === 'over';
+    if (buntingG._over !== over) { buntingG.innerHTML = over ? bunting() : ''; buntingG._over = over; }
     drawKbd(); // the board may have changed shape
   };
 
@@ -308,6 +311,22 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       : [{ transform: 'scale(1.9)', opacity: 0 }, { transform: 'scale(1)', opacity: 1, offset: 0.1 }, { transform: 'scale(1)', opacity: 1, offset: 0.85 }, { opacity: 0 }];
     g.firstChild.animate(steps, { duration: ms, easing: 'ease-out' }).finished.then(() => g.remove(), () => g.remove());
   };
+
+  // Founders' Day: bunting strung across the top of the middle of the board, in the districts' colours.
+  const bunting = () => {
+    const colors = Object.values(DISTRICT).map(d => d.color);
+    let g = '', k = 0;
+    for (const [x0, x1] of [[150, 450], [450, 750]]) {
+      const sag = 46, y0 = 152, at = u => [x0 + (x1 - x0) * u, y0 + sag * 4 * u * (1 - u)];
+      g += `<path class="rope" d="M${x0} ${y0} Q${(x0 + x1) / 2} ${y0 + sag * 2} ${x1} ${y0}"/>`;
+      for (let n = 1; n < 8; n++) {
+        const [ax, ay] = at((n - 0.5) / 7.5), [bx, by] = at((n + 0.25) / 7.5);
+        g += `<path class="flag" fill="${colors[k++ % colors.length]}" d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${bx.toFixed(1)} ${by.toFixed(1)} L${((ax + bx) / 2).toFixed(1)} ${((ay + by) / 2 + 34).toFixed(1)} Z"/>`;
+      }
+    }
+    return g;
+  };
+
 
   // A building going up, or a lot changing hands: give the cell a little bounce. It lifts like a card off the board:
   // drawn over the other spaces and the frame, on paper (see .cell.pop in the css), so its lines don't sit beside

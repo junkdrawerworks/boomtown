@@ -759,6 +759,18 @@ await page.click('#sheet [data-a="rules"]');
 assert.match(await page.textContent('#sheet #sheetTitle'), /How to play/, 'How to play does not open from the menu');
 await page.click('#sheet [data-close]');
 
+// When the last turn ends the board shows the finished town a moment, with bunting strung across it, before the special
+// edition opens; the bunting stays up behind it.
+{
+  await scene('s.phase = "over"; window.t0 = performance.now();');
+  assert.equal(await page.$$eval('#board .bunting .flag', f => f.length), 14, "Founders' Day has no bunting on the board");
+  assert.equal(await sheetOpen(), false, "Founders' Day's edition opens straight away");
+  await page.waitForSelector('#sheet .standings li');
+  const waited = await page.evaluate(() => performance.now() - window.t0);
+  assert.ok(waited >= 1100, `Founders' Day's edition opened ${Math.round(waited)} ms after the last turn, with no moment on the town`);
+  await page.click('#sheet [data-close]');
+}
+
 // Founders' Day closed any way, by Escape, a tap outside it or its ✕, leaves its headline and See the results on the
 // board, which opens it again. A player with a loan is shown owing it, as on their card, never with cash below nothing.
 for (const how of ['Escape', 'scrim', '✕']) {
