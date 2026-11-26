@@ -7,6 +7,20 @@ export const PLAYER_COLORS = ['#dd4a2f', '#2d63cf', '#1f9658', '#de4f8d'];
 // A player's colour a fifth of the way to ink, for their rent tags on the board and their rents written on paper: white
 // on it, or it on the cream paper, reads at 4.5:1 or better.
 export const tagColor = hex => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) * 0.8 + parseInt(INK.slice(k, k + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
+// Ink or white, whichever reads better on a colour (by WCAG contrast): words on a district's banner.
+const lum = hex => [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255).map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  .reduce((t, c, k) => t + c * [0.2126, 0.7152, 0.0722][k], 0);
+export const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+export const inkOn = hex => (contrast(hex, '#ffffff') >= contrast(hex, INK) ? '#fff' : INK);
+// A colour and the words to go on it, with the colour taken a little lighter (under ink) or darker (under white) until
+// the two read at 4.5:1 or better.
+const mix = (a, b, w) => '#' + [1, 3, 5].map(k => Math.round(parseInt(a.slice(k, k + 2), 16) * (1 - w) + parseInt(b.slice(k, k + 2), 16) * w).toString(16).padStart(2, '0')).join('');
+export function readable(hex) {
+  const fg = inkOn(hex), toward = fg === INK ? '#ffffff' : INK;
+  let bg = hex;
+  for (let w = 0.05; contrast(bg, fg === INK ? INK : '#ffffff') < 4.5 && w <= 1; w += 0.05) bg = mix(hex, toward, w);
+  return [bg, fg];
+}
 export const TOKEN_NAMES = ['button', 'bottle cap', 'marble', 'key'];
 
 const s = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;

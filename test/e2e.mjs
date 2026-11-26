@@ -836,6 +836,28 @@ await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.owner
   assert.ok(floats.every(f => f[1] === '#1f7a46'), 'land going up is not shown in green');
 }
 
+// The lot that makes a whole district yours brings a banner in the district's colours, over the upper middle of the
+// board, saying what owning it all does; What happened says so too. Its words read at 4.5:1 or better.
+await scene(`B.LOTS_IN.mill.forEach(j => { s.owner[j] = 0; s.level[j] = 0; }); const i = B.LOTS_IN.mill[2]; s.owner[i] = -1;
+  s.players[0].pos = i; s.players[0].cash = 2000; s.dice = [1, 3]; s.phase = 'decide'; s.pending = { kind: 'buy', at: i, price: G.landValue(s, i) };`);
+{
+  await page.click('#sheet [data-c="buy"]');
+  await page.waitForSelector('#banner:not([hidden])', { timeout: 5000 });
+  assert.equal(await page.textContent('#banner'), 'You own all of Mill RowRents double on its empty lots.');
+  const [ribbon, middle] = await page.evaluate(() => ['#banner', '#center'].map(q => document.querySelector(q).getBoundingClientRect().toJSON()));
+  assert.ok(ribbon.top >= middle.top && ribbon.bottom <= middle.top + middle.height / 2 && ribbon.left >= middle.left - 4 && ribbon.right <= middle.right + 4,
+    `the banner is not over the upper middle of the board: ${JSON.stringify({ ribbon, middle })}`);
+  const ratio = await page.$eval('#banner .ribbon', el => {
+    const rgb = c => c.match(/\d+/g).slice(0, 3).map(Number).map(v => v / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    const L = c => { const [r, g, b] = rgb(c); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const cs = getComputedStyle(el), [a, b] = [L(cs.backgroundColor), L(cs.color)].sort((x, y) => y - x);
+    return (a + 0.05) / (b + 0.05);
+  });
+  assert.ok(ratio >= 4.5, `the banner's words read at only ${ratio.toFixed(2)}:1`);
+  await page.waitForFunction(() => !window.boomtown.busy);
+  assert.ok((await page.evaluate(() => window.boomtown.state.log)).includes('You own all of Mill Row. Rents double on its empty lots.'), "What happened doesn't say you own all of Mill Row");
+}
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {

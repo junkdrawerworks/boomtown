@@ -655,6 +655,13 @@ async function play(events, my = gen, before = null) {
           render(); view.pop(e.at); note = line; setSay(note);
           if (person) toast(`${Who(e.p)} made ${who(e.from)} sell ${esc(SPACES[e.at].name)}`, `${money(e.price)} for land worth ${money(G.landValue(shown || s, e.at))}.`, 3200 * k);
           await nap((person ? 1200 : 550) * k);
+          // The lot that makes a whole district (or both depots) one player's gets a banner in the district's colour.
+          const v = shown || s, d = SPACES[e.at].district;
+          if (d ? G.ownsDistrict(v, e.p, d) : DEPOTS.every(x => v.owner[x] === e.p)) {
+            sf.fanfare();
+            addLog(banner(e.p, d, 2800 * k));
+            await nap(1400 * k);
+          }
           break;
         }
         case 'build': case 'sell':
@@ -1031,6 +1038,23 @@ function showCard(id) {
       <div class="buttons"><button class="primary" data-ok>Read on</button></div>`, { closable: false });
     body.querySelector('[data-ok]').addEventListener('click', () => { closeSheet(); resolve(); });
   });
+}
+
+// The banner for a whole district (`d`, or none for both depots) come to be player p's, for `ms`. It says what owning
+// all of it does, and returns its words for the log.
+let bannerTimer = null;
+function banner(p, d, ms) {
+  const R = G.RULES, color = d ? DISTRICT[d].color : '#7d6b5a', el = $('banner');
+  const head = `${Who(p)} ${agree(p, 'own', 'owns')} ${d ? `all of ${DISTRICT[d].name}` : 'both depots'}`;
+  const sub = d ? `Rents ${R.setEmpty === 2 ? 'double' : `go up ${R.setEmpty} times`} on its empty lots.`
+    : `Rent is ${money(R.depotRent[2])} at each, and nobody can make ${who(p)} sell one.`;
+  const [bg, fg] = art.readable(color);
+  el.innerHTML = `<div class="ribbon" style="background:${bg};color:${fg}"><b>${head}</b><span>${sub}</span></div>`;
+  el.hidden = false;
+  el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { el.hidden = true; }, ms);
+  return `${head}. ${sub}`;
 }
 
 // A headline over the middle of the board, for `ms`: the townsfolk's news, or a forced sale on a person's lot. The
