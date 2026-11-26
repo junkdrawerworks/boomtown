@@ -915,14 +915,16 @@ $('menuBtn').addEventListener('click', () => {
     </div>
     <p class="note">Leaving keeps this game: carry on from the title screen.</p>
     <footer class="jd-foot"><a href="https://junkdrawer.works/">Part of junkdrawer.works</a> <span aria-hidden="true">·</span> <a href="https://junkdrawer.works/privacy.html">Privacy</a></footer>`);
-  body.addEventListener('click', e => {
-    const a = e.target.closest('[data-a]')?.dataset.a;
+  // On the menu's own buttons, which go with the menu: the sheet's body stays, and a listener on it would stay too,
+  // one more each time the menu opens, so a tap on Sound would toggle it once for every opening.
+  body.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => {
+    const a = b.dataset.a;
     if (a === 'back') closeSheet();
     if (a === 'rules') showRules();
-    if (a === 'sound') { prefs.sound = !soundOn(); setSound(prefs.sound); store.set(PREFS, prefs); e.target.textContent = `Sound: ${prefs.sound ? 'on' : 'off'}`; }
-    if (a === 'speed') { prefs.speed = prefs.speed === 'fast' ? 'normal' : 'fast'; store.set(PREFS, prefs); e.target.textContent = `Pace: ${prefs.speed === 'fast' ? 'fast' : 'easy'}`; }
+    if (a === 'sound') { prefs.sound = !soundOn(); setSound(prefs.sound); store.set(PREFS, prefs); b.textContent = `Sound: ${prefs.sound ? 'on' : 'off'}`; b.setAttribute('aria-pressed', prefs.sound); }
+    if (a === 'speed') { prefs.speed = prefs.speed === 'fast' ? 'normal' : 'fast'; store.set(PREFS, prefs); b.textContent = `Pace: ${prefs.speed === 'fast' ? 'fast' : 'easy'}`; }
     if (a === 'leave') showTitle();
-  });
+  }));
 });
 
 $('logBtn').addEventListener('click', () => {

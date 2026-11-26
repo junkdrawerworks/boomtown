@@ -401,6 +401,27 @@ await scene("s.phase = 'manage'; s.dice = [1, 2];");
   assert.equal(await page.evaluate(() => window.boomtown.state.turn), 0, 'the townsfolk did not play on to your turn after Carry on');
 }
 
+// In the menu one tap on Sound or Pace changes it once, however many times the menu has been opened. (Opened twice,
+// both end where they started.)
+await scene();
+for (let k = 0; k < 2; k++) {
+  await page.click('#menuBtn');
+  for (const [a, key] of [['sound', 'sound'], ['speed', 'speed']]) {
+    const b = `#sheet [data-a="${a}"]`;
+    const before = [await page.textContent(b), await page.evaluate(key => JSON.parse(localStorage.getItem('boomtown.prefs'))[key], key)];
+    await page.click(b);
+    const after = [await page.textContent(b), await page.evaluate(key => JSON.parse(localStorage.getItem('boomtown.prefs'))[key], key)];
+    assert.notEqual(after[0], before[0], `opened ${k + 1} times, a tap on ${a} doesn't change its label`);
+    assert.notEqual(after[1], before[1], `opened ${k + 1} times, a tap on ${a} doesn't change it`);
+    if (a === 'sound') assert.equal(await page.getAttribute(b, 'aria-pressed'), String(after[1]), 'Sound is read out as it was before the tap');
+  }
+  await page.click('#sheet [data-a="back"]');
+}
+await page.click('#menuBtn');
+await page.click('#sheet [data-a="rules"]');
+assert.match(await page.textContent('#sheet #sheetTitle'), /How to play/, 'How to play does not open from the menu');
+await page.click('#sheet [data-close]');
+
 // A lot of yours that a rival could force you to sell says so, in Your lots and on its own sheet.
 await scene("const i = B.LOTS_IN.mill[0]; B.LOTS_IN.mill.forEach(j => { s.owner[j] = -1; s.level[j] = 0; }); s.owner[i] = 0; window.bare = i;");
 {
