@@ -132,7 +132,8 @@ export function createBoard(svg, { onCell } = {}) {
       const bx = r.side === 'right' ? r.x + 38 : r.x + r.w - (r.side === 'left' ? 38 : 18 + inset);
       const by = (r.side === 'bottom' ? r.y + 40 : r.y + 18) + inset;
       const k = Math.round(B * 6 / 13);
-      m += `<g class="can-build" transform="translate(${bx} ${by})"><circle r="${B}"/><path d="M${-k} 0 H${k} M0 ${-k} V${k}"/></g>`;
+      // Placed by the outer group: the badge's breathing animation sets a CSS transform, which would replace this one.
+      m += `<g transform="translate(${bx} ${by})"><g class="can-build"><circle r="${B}"/><path d="M${-k} 0 H${k} M0 ${-k} V${k}"/></g></g>`;
     }
     if (focus != null) {
       const r = cellRect(focus, H);

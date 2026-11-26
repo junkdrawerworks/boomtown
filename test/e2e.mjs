@@ -260,6 +260,19 @@ assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tappe
 await page.click('#sheet [data-close]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 0, 'the ring stays after the sheet closes');
 
+// Each lot you can build on has its badge on that lot, not piled in a corner of the board.
+await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
+await page.waitForTimeout(400);
+{
+  const badges = await page.$$eval('#board .can-build', bs => bs.map(b => {
+    const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const cell = [...document.querySelectorAll('#board .cell .bg')].find(c => { const q = c.getBoundingClientRect(); return x >= q.left && x <= q.right && y >= q.top && y <= q.bottom; });
+    return cell ? +cell.closest('.cell').dataset.i : null;
+  }));
+  const can = await page.evaluate(() => { const { G, state: s } = window.boomtown; return Object.keys(s.owner).map(Number).filter(i => G.canBuild(s, 0, i).ok); });
+  assert.deepEqual([...badges].sort((x, y) => x - y), can.sort((x, y) => x - y), 'the build badges are not on the lots you can build on');
+}
+
 // After a detour the die not moved by is dimmed, until the next roll. With reduced motion asked for, pieces jump
 // rather than hop.
 await page.setViewportSize({ width: 390, height: 844 });
