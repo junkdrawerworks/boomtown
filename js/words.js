@@ -1,7 +1,7 @@
 // Boomtown's words, with no screen: amounts, who's who in a sentence, and the facts on a lot's sheet. app.js and
 // view.js write with these, and test/unit.test.mjs reads them in Node.
 
-import { SPACES, DISTRICT, LOTS_IN } from './board.js';
+import { SPACES, DISTRICT, LOTS_IN, DEPOTS } from './board.js';
 import * as G from './game.js';
 
 export const money = n => (n < 0 ? `−$${(-n).toLocaleString('en-US')}` : `$${n.toLocaleString('en-US')}`);
@@ -64,6 +64,28 @@ export function rentTable(s, i) {
   const o = s.owner[i], to = o >= 0 ? o : buyer(s);
   const rows = G.LEVEL_NAMES.map((name, lv) => `<tr class="${o >= 0 && lv === cur ? 'here' : ''}"><td>Rent, ${name.toLowerCase()}${lv ? ` (+${money(G.buildCost(i))})` : ''}</td><td>${money(rentAt(s, i, lv, to))}</td></tr>`).join('');
   return `<table class="facts">${rows}</table>`;
+}
+
+// A row of the Land Office's or the Estate sale's list, for player p to choose from: what empty lot i would rent for
+// once theirs (the street's bonus counted, and the whole district's when it finishes one), and where its district (or
+// the pair of depots) stands: "Mill Row · rent $5 · Rusty owns 1 of 3", "Finishes your Mill Row · rent $10". The
+// sheet is p's own, so p is "you" in it. `finishes`: owning it would make the whole district, or both depots, p's.
+// Plain text: escape it for HTML.
+export function forSale(s, i, p) {
+  const sp = SPACES[i], depot = sp.type === 'depot';
+  const others = (depot ? DEPOTS : LOTS_IN[sp.district]).filter(j => j !== i);
+  const rent = `rent ${money(rentAt(s, i, 0, p))}`;
+  const finishes = others.every(j => s.owner[j] === p);
+  if (finishes) return { finishes, line: `${depot ? 'Makes both depots yours' : `Finishes your ${DISTRICT[sp.district].name}`} · ${rent}` };
+  const held = new Map();
+  for (const j of others) if (s.owner[j] >= 0) held.set(s.owner[j], (held.get(s.owner[j]) || 0) + 1);
+  const name = q => (q === p ? 'you' : s.players[q].name), Name = q => (q === p ? 'You' : s.players[q].name);
+  let stands;
+  if (!held.size) stands = "Nobody's yet";
+  else if (depot) stands = `${Name([...held.keys()][0])} has the other`; // not p's: that would finish the pair
+  else if (held.size === 1) { const [[q, n]] = held; stands = `${Name(q)} ${q === p ? 'own' : 'owns'} ${n} of 3`; }
+  else { const [a, b] = [...held.keys()].sort((x, y) => (y === p) - (x === p)); stands = `${Name(a)} and ${name(b)} own 1 each`; }
+  return { finishes, line: `${depot ? 'Railway' : DISTRICT[sp.district].name} · ${rent} · ${stands}` };
 }
 
 // The top of a lot's or a depot's sheet: whose it is, its rent, and how its district stands. With `warn`, a person's

@@ -757,3 +757,28 @@ test("Founders' Day as text to share", () => {
     "THE BOOMTOWN GAZETTE, Founders' Day (30 rounds): Dot is the richest in Boomtown.\n1. Dot $3,040\n2. Player 1 $2,722\nboomtown.junkdrawer.works");
   assert.match(W.shareText(s, [{ p: 0, worth: 3040 }, { p: 1, worth: 2722 }]), /^THE BOOMTOWN GAZETTE, Founders' Day \(30 rounds\): Player 1 is the richest in Boomtown\.\n1\. Player 1 \$3,040\n/);
 });
+
+test("the Land Office's rows: a lot's empty rent once yours, and where its district stands", () => {
+  const s = G.newGame({ seats: seats(3), seed: 5 });
+  const [tannery, millrace, sawpit] = LOTS_IN.mill, [cider, windfall, pear] = LOTS_IN.orchard, [ferry, towpath] = LOTS_IN.river;
+  const line = i => W.forSale(s, i, 0).line;
+  assert.equal(line(tannery), "Mill Row · rent $5 · Nobody's yet");
+  s.owner[millrace] = 1;
+  assert.equal(line(tannery), 'Mill Row · rent $5 · P1 owns 1 of 3');
+  s.owner[sawpit] = 0;
+  assert.equal(line(tannery), 'Mill Row · rent $5 · You and P1 own 1 each');
+  s.owner[millrace] = 2; s.owner[sawpit] = 1;
+  assert.equal(line(tannery), 'Mill Row · rent $5 · P2 and P1 own 1 each');
+  // Finishing a district: the whole district's rent on an empty lot, its street's bonus counted ($90 x 12% x 1.3 x 2).
+  s.owner[windfall] = 0; s.owner[pear] = 0; s.level[pear] = 1;
+  assert.deepEqual(W.forSale(s, cider, 0), { finishes: true, line: 'Finishes your Orchard Lane · rent $30' });
+  s.owner[towpath] = 0;
+  assert.equal(line(ferry), 'Riverside · rent $15 · You own 1 of 3');
+  assert.equal(W.forSale(s, ferry, 0).finishes, false);
+  // Depots: one is $40, the pair $100.
+  assert.equal(line(DEPOTS[0]), "Railway · rent $40 · Nobody's yet");
+  s.owner[DEPOTS[1]] = 2;
+  assert.equal(line(DEPOTS[0]), 'Railway · rent $40 · P2 has the other');
+  s.owner[DEPOTS[1]] = 0;
+  assert.deepEqual(W.forSale(s, DEPOTS[0], 0), { finishes: true, line: 'Makes both depots yours · rent $100' });
+});

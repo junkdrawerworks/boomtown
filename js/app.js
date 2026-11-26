@@ -1003,12 +1003,15 @@ function askDecision() {
     }
     case 'office': case 'estate': {
       const half = q.kind === 'estate';
-      const list = G.emptyLots(s).filter(i => !half || SPACES[i].type === 'lot');
+      // Each row says what the lot would rent for, empty, once yours, and where its district stands; a lot that would
+      // finish one of your districts (or give you both depots) comes first.
+      const list = G.emptyLots(s).filter(i => !half || SPACES[i].type === 'lot').map(i => ({ i, ...W.forSale(s, i, p) }))
+        .sort((a, b) => b.finishes - a.finishes);
       h = `<h2 id="sheetTitle">${half ? 'Estate sale' : 'Land Office'}</h2><p>${half ? 'Buy any empty lot at half price.' : 'Buy any empty lot or depot in town at its price.'}</p><p class="note have">${have}.</p><div class="pick-list">`;
-      for (const i of list) {
+      for (const { i, line } of list) {
         const price = half ? Math.round(G.landValue(s, i) / 2 / 5) * 5 : G.landValue(s, i);
         const d = SPACES[i].district;
-        h += `<button class="pick" data-c="${i}" ${price > pl.cash ? 'disabled' : ''}>${d ? swatch(d) : '<span class="swatch" style="background:#7d6b5a"></span>'}<span>${esc(SPACES[i].name)}<small>${d ? DISTRICT[d].name + ownedNote(d) : 'Railway'}</small></span><span class="cost">${money(price)}</span></button>`;
+        h += `<button class="pick" data-c="${i}" ${price > pl.cash ? 'disabled' : ''}>${d ? swatch(d) : '<span class="swatch" style="background:#7d6b5a"></span>'}<span>${esc(SPACES[i].name)}<small>${esc(line)}</small></span><span class="cost">${money(price)}</span></button>`;
       }
       h += `</div><div class="buttons stick"><button class="secondary" data-c="pass">Not today</button></div>`;
       break;
@@ -1044,12 +1047,6 @@ function askDecision() {
     decideWith(/^\d+$/.test(c) ? +c : c);
   }));
 }
-
-const ownedNote = d => {
-  const p = s.turn, lots = LOTS_IN[d];
-  const mine = lots.filter(i => s.owner[i] === p).length;
-  return mine ? ` · you own ${mine} of 3` : '';
-};
 
 function gazetteHtml(id) {
   const c = CARD[id];

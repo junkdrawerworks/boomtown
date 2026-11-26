@@ -594,6 +594,20 @@ for (const [d, line] of [['mill', 'You rezoned Mill Row: land up from 122% to 14
     const t = await state();
     assert.deepEqual([t.owner[i], t.players[0].cash], [0, 1000 - price], `buying at the ${kind}`);
   }
+  // Each of the Land Office's rows says what the lot would rent for once yours, and where its district stands; a lot
+  // that would finish one of your districts comes first, here Belvedere, the last lot on the board.
+  {
+    const [lookout, summit, belvedere] = [25, 26, 27];
+    await scene(`${EMPTY} s.players[0].pos = 7; s.players[0].cash = 1000; for (const i of [${lookout}, ${summit}, ${belvedere}]) { s.owner[i] = -1; s.level[i] = 0; } s.owner[${lookout}] = 0; s.owner[${summit}] = 0; s.owner[2] = 1; s.pending = { kind: 'office' };`);
+    await ask('#sheet .pick');
+    const rows = await page.$$eval('#sheet .pick', bs => bs.map(b => [+b.dataset.c, b.querySelector('small').textContent]));
+    assert.deepEqual(rows[0], [belvedere, `Finishes your Hilltop · rent ${usd(await page.evaluate(i => { const { G, state: s } = window.boomtown; return G.rentFor({ ...s, owner: { ...s.owner, [i]: 0 } }, i); }, belvedere))}`],
+      `the Land Office doesn't put the lot that finishes your district first: ${JSON.stringify(rows.slice(0, 3))}`);
+    const mill = rows.find(r => r[0] === 1);
+    assert.match(mill?.[1] || '', /^Mill Row · rent \$\d+ · Rusty owns 1 of 3$/, `a Land Office row doesn't say where its district stands: ${JSON.stringify(mill)}`);
+    await page.click('#sheet [data-c="pass"]');
+    await settled();
+  }
 
   // The Lumberyard builds a level at half its cost.
   await scene(`${EMPTY} const i = B.LOTS_IN.mill[1]; s.owner[i] = 0; s.players[0].pos = 10; s.players[0].cash = 300; s.pending = { kind: 'yard' }; window.lot = i;`);
