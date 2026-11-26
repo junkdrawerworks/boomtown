@@ -166,7 +166,7 @@ assert.equal(await page.isVisible('#sheet .chart'), true);
   assert.match(dialog?.name?.value || '', /richest in Boomtown/i, "Founders' Day has no name for a screen reader");
   assert.equal(await page.$eval('#sheet .close', c => { const r = c.getBoundingClientRect(); return document.elementFromPoint(r.right - 6, r.top + r.height / 2)?.closest('.close') === c; }), true,
     "the Gazette covers Founders' Day's ✕");
-  assert.match(await page.getAttribute('#sheet .chart', 'aria-label'), /round by round\. (You|Mabel) ended on \$[\d,]+, (You|Mabel) on \$[\d,]+\.$/, "the chart doesn't say where each player ended");
+  assert.match(await page.getAttribute('#sheet .chart', 'aria-label'), /round by round\. (You|Mabel) ended on −?\$[\d,]+, (You|Mabel) on −?\$[\d,]+\.$/, "the chart doesn't say where each player ended");
 }
 await page.click('#sheet [data-a="again"]');
 await page.waitForSelector('#actions button:has-text("Roll the dice")');
