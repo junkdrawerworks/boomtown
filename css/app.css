@@ -66,7 +66,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board .sign { font-size: 15px; fill: var(--ink); letter-spacing: .04em; }
 #board .mast { font-family: 'Unifraktur', serif; font-size: 30px; fill: var(--ink); }
 #board .coin { font-size: 34px; fill: var(--ink); }
-#board .tag-ink { font-size: 12px; fill: var(--ink); }
 #board .pill { font-size: 22px; }
 #board .tiny { font-size: 17px; fill: var(--ink); }
 #board .corner-label { font-size: 16.5px; fill: var(--ink); }

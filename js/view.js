@@ -207,18 +207,18 @@ export function createBoard(svg, { onCell, onDest } = {}) {
       case 'lot': {
         const lv = s.level[i];
         drawing = o < 0 ? art.forSale() : lv ? art.BUILDINGS[lv](color) : art.sold(color);
-        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w, '#fff', s.players[o].token) : pill(usd(landValue(s, i)), '#fffaf0', r.w, art.INK);
         label = `${sp.name}, ${DISTRICT[sp.district].name}. ` + (o < 0 ? `For sale, ${usd(landValue(s, i))}.` : `${Whose(s.players[o])} ${LEVEL_NAMES[lv].toLowerCase()}, rent ${usd(rentFor(s, i))}.`);
         break;
       }
       case 'depot':
         drawing = art.depot(color);
-        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
+        tag = o >= 0 ? pill(usd(rentFor(s, i)), art.tagColor(color), r.w, '#fff', s.players[o].token) : pill(usd(sp.price), '#fffaf0', r.w, art.INK);
         label = `${sp.name}. ` + (o < 0 ? `For sale, ${usd(sp.price)}.` : `${Whose(s.players[o])} depot, rent ${usd(rentFor(s, i))}.`);
         break;
-      case 'gazette': drawing = art.gazette; label = 'The Gazette: draw a headline.'; break;
+      case 'gazette': drawing = art.gazette; tag = `<text class="tiny">NEWS</text>`; label = 'The Gazette: draw a headline.'; break;
       case 'yard': drawing = art.lumber; tag = `<text class="tiny">BUILD ½</text>`; label = 'Lumberyard: build one level at half price.'; break;
-      case 'tax': drawing = art.assessor; label = `Assessor: pay ${SAYS.tax}.`; break;
+      case 'tax': drawing = art.assessor; tag = `<text class="tiny">TAX</text>`; label = `Assessor: pay ${SAYS.tax}.`; break;
       case 'payday': drawing = art.payday; label = `Payday: collect ${usd(RULES.salary)} passing, ${usd(RULES.salary + RULES.landBonus)} landing.`; break;
       case 'office': drawing = art.office; label = 'Land Office: buy any empty lot.'; break;
       case 'square': drawing = art.square; label = `Town Square: take the kitty, ${usd(s.kitty)}.`; break;
@@ -239,13 +239,18 @@ export function createBoard(svg, { onCell, onDest } = {}) {
   }
 
   // A price or rent tag, sized to its text: 26 units on the tall board (22 on the square one), smaller for a long
-  // amount so the tag stays inside its cell (`room` units wide). In the slab face a digit or $ is about .69 em wide, a comma .25.
-  const pill = (text, fill, room, ink = '#fff') => {
+  // amount so the tag stays inside its cell (`room` units wide). In the slab face a digit or $ is about .69 em wide, a
+  // comma .25. A rent tag carries a little paper copy of the owner's piece at its left end, so who owns a lot shows by
+  // shape as well as colour: [2] piece [2] amount [6], the piece as tall as the tag less 7.
+  const pill = (text, fill, room, ink = '#fff', piece = null) => {
     const ems = [...text].reduce((n, c) => n + (c === ',' ? 0.25 : 0.69), 0);
-    const size = Math.min(H > SIZE ? 26 : 22, Math.floor((room - 16) / ems));
-    const w = Math.round(ems * size + 14), h = Math.round(size * 1.18);
+    const size = Math.min(H > SIZE ? 26 : 22, piece == null ? Math.floor((room - 16) / ems) : Math.floor((room - 5) / (ems + 1.18)));
+    const h = Math.round(size * 1.18), d = h - 7;
+    const lead = piece == null ? 7 : d + 4, w = Math.round(ems * size + lead + (piece == null ? 7 : 6));
+    const tx = -w / 2 + lead + ems * size / 2;
     return `<rect x="${-w / 2}" y="${-h / 2 - 1}" width="${w}" height="${h}" rx="${h / 2}" fill="${fill}" stroke="${art.INK}" stroke-width="2"/>
-      <text class="pill" y="${Math.round(size * 0.36) - 1}" fill="${ink}" style="font-size:${size}px">${text}</text>`;
+      <text class="pill" x="${Math.round(tx)}" y="${Math.round(size * 0.36) - 1}" fill="${ink}" style="font-size:${size}px">${text}</text>` +
+      (piece == null ? '' : `<g class="owner" transform="translate(${Math.round(-w / 2 + 2 + d / 2)} -1) scale(${(d / 37).toFixed(3)})">${art.token(piece, '#fffaf0')}</g>`);
   };
 
   // Hop a piece along a path of spaces.

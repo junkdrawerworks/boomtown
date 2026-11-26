@@ -67,14 +67,19 @@ export function block(color) {
 
 export const BUILDINGS = [null, house, shop, block];
 
+// A depot: a little station with a platform, on the rails, flying its owner's flag once it's bought.
 export function depot(color) {
-  const flag = color ? `<path d="M20 -18 V-44" ${s}/><path d="M20 -44 L38 -38 L20 -32 Z" fill="${color}" ${s}/>` : '';
-  return `${ground}
-    <rect x="-30" y="-6" width="60" height="36" fill="#fffaf0" ${s}/>
-    <path d="M-36 -4 L0 -22 L36 -4 Z" fill="#7d6b5a" ${s}/>
-    <circle cx="0" cy="6" r="6" fill="#fffaf0" ${thin}/><path d="M0 2 V6 H3" ${thin} fill="none"/>
-    <rect x="-22" y="14" width="10" height="16" fill="${INK}" opacity=".85"/>
-    <rect x="12" y="14" width="10" height="16" fill="${INK}" opacity=".85"/>${flag}`;
+  let sleepers = '';
+  for (let x = -32; x <= 32; x += 8) sleepers += `<rect x="${x - 2}" y="22" width="4" height="10" fill="#8a6a4a"/>`;
+  const flag = color ? `<path d="M26 -14 V-44" ${s}/><path d="M26 -44 L42 -38 L26 -32 Z" fill="${color}" ${s}/>` : '';
+  return `${sleepers}
+    <path d="M-37 24.5 H37 M-37 30 H37" ${s}/>
+    <rect x="-32" y="12" width="64" height="8" fill="#e8dcc0" ${s}/>
+    <rect x="-22" y="-12" width="44" height="24" fill="#fffaf0" ${s}/>
+    <path d="M-31 -10 L-20 -26 H20 L31 -10 Z" fill="#7d6b5a" ${s}/>
+    <circle cx="0" cy="-17" r="5" fill="#fffaf0" ${thin}/><path d="M0 -20 V-17 H2.5" ${thin} fill="none"/>
+    <rect x="-17" y="-5" width="8" height="8" fill="#bfe0ee" ${thin}/><rect x="9" y="-5" width="8" height="8" fill="#bfe0ee" ${thin}/>
+    <rect x="-5" y="0" width="10" height="12" fill="${INK}" opacity=".85"/>${flag}`;
 }
 
 export const gazette = `${ground}
@@ -92,8 +97,7 @@ export const lumber = `${ground}
 
 export const assessor = `${ground}
   <rect x="-26" y="-20" width="44" height="48" rx="2" fill="#fffaf0" ${s}/>
-  <path d="M-19 -10 H11 M-19 -2 H11 M-19 6 H3" ${thin}/>
-  <text x="-4" y="23" class="tag-ink">TAX</text>
+  <path d="M-19 -10 H11 M-19 -2 H11 M-19 6 H11 M-19 14 H3" ${thin}/>
   <circle cx="16" cy="-6" r="11" fill="#cfe6f0" fill-opacity=".7" ${s}/>
   <path d="M24 2 L34 14" ${s} stroke-width="5"/>`;
 
@@ -123,6 +127,7 @@ export const hall = `${ground}
 
 // The playing pieces: things from a junk drawer, in each player's colour. Drawn round (0, 0), radius about 16.
 export function token(k, color = PLAYER_COLORS[k]) {
+  const shine = color === '#fffaf0' ? '#2a242066' : null; // the paper copy on a rent tag shows its shine in ink
   switch (k) {
     case 0: return `<circle r="15" fill="${color}" ${s}/><circle r="10" fill="none" stroke="#0003" stroke-width="2"/>
       <circle cx="-3.5" cy="-3.5" r="2.2" fill="${INK}"/><circle cx="3.5" cy="-3.5" r="2.2" fill="${INK}"/>
@@ -133,11 +138,11 @@ export function token(k, color = PLAYER_COLORS[k]) {
         const t = (a / 21) * Math.PI * 2, r = a % 2 ? 13 : 16.5;
         d += `${a ? 'L' : 'M'}${(Math.cos(t) * r).toFixed(1)} ${(Math.sin(t) * r).toFixed(1)} `;
       }
-      return `<path d="${d}Z" fill="${color}" ${s}/><circle r="9" fill="none" stroke="#fff8" stroke-width="2"/>`;
+      return `<path d="${d}Z" fill="${color}" ${s}/><circle r="9" fill="none" stroke="${shine || '#fff8'}" stroke-width="2"/>`;
     }
     case 2: return `<circle r="15" fill="${color}" ${s}/>
-      <path d="M-8 6 Q0 -4 9 -8" stroke="#fff9" stroke-width="3" fill="none"/>
-      <ellipse cx="-5" cy="-6" rx="4" ry="3" fill="#fffc"/>`;
+      <path d="M-8 6 Q0 -4 9 -8" stroke="${shine || '#fff9'}" stroke-width="3" fill="none"/>
+      <ellipse cx="-5" cy="-6" rx="4" ry="3" fill="${shine || '#fffc'}"/>`;
     default: return `<g transform="rotate(-35)"><circle cx="-7" r="10" fill="${color}" ${s}/><circle cx="-7" r="3.5" fill="${PAPER}" ${thin}/>
       <path d="M2 -3.5 H17 V0 H14 V4 H11 V0 H9 V4 H6 V0 H2 Z" fill="${color}" ${s}/></g>`;
   }

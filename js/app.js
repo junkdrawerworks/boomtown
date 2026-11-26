@@ -1099,5 +1099,5 @@ if ('serviceWorker' in navigator && window.isSecureContext && !window.BOOMTOWN_A
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 // For tests and screenshots: window.boomtown gives the state.
-window.boomtown = { get state() { return s; }, get busy() { return busy; }, G, start: startGame, render };
+window.boomtown = { get state() { return s; }, get busy() { return busy; }, G, art, start: startGame, render };
 showTitle(false);

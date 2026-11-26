@@ -240,20 +240,35 @@ await scene('s.players[0].pos = 17;');
 }
 
 // The tall board's tags are big enough to read on a phone, written like every other amount ($1,440), and stay
-// inside their cells; the Payday corner says what Payday pays.
+// inside their cells; the Payday corner says what Payday pays. A rent tag carries a copy of its owner's piece, inside
+// the tag and clear of the amount, so an owner shows by shape as well as colour (a price tag has none). The Gazette
+// says NEWS and the Assessor TAX under their drawings, as the Lumberyard says BUILD ½.
 await scene("B.LOTS_IN.bank.forEach(i => { s.owner[i] = 3; s.level[i] = 3; }); s.land.bank = 1.6;");
 {
+  const st = await page.evaluate(() => { const s = window.boomtown.state; return { owner: s.owner, tokens: s.players.map(p => p.token) }; });
   const tags = await page.$$eval('#board .cell', cells => cells.flatMap(c => {
     const t = c.querySelector('text.pill');
     if (!t) return [];
     const cell = c.querySelector('.bg').getBBox(), tag = t.previousElementSibling.getBoundingClientRect(), box = c.querySelector('.bg').getBoundingClientRect();
-    return [{ text: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), inside: tag.left >= box.left - 0.5 && tag.right <= box.right + 0.5, w: cell.width }];
+    const piece = c.querySelector('.owner'), pb = piece?.getBoundingClientRect(), tb = t.getBoundingClientRect();
+    return [{ i: +c.dataset.i, text: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), inside: tag.left >= box.left - 0.5 && tag.right <= box.right + 0.5, w: cell.width,
+      piece: piece ? piece.innerHTML : null, pieceIn: pb && pb.left >= tag.left && pb.right <= tb.left + 0.5 && pb.top >= tag.top - 0.5 && pb.bottom <= tag.bottom + 0.5 }];
   }));
   const big = tags.filter(t => t.text.replace(/\D/g, '') >= 1000);
   assert.ok(big.length && big.every(t => /^\$\d{1,3}(,\d{3})+$/.test(t.text)), `amounts of $1,000 and more on the board have no comma: ${JSON.stringify(big)}`);
   assert.deepEqual(tags.filter(t => !t.inside), [], 'a tag reaches outside its cell');
-  assert.ok(tags.filter(t => t.text.length <= 5).every(t => t.size >= 26), `short tags on the tall board are small: ${JSON.stringify(tags)}`);
+  // Short amounts at 26 units; a rent tag in a space 100 across gives up a little to its piece.
+  assert.ok(tags.filter(t => t.text.length <= 5).every(t => t.size >= (t.piece && t.w < 150 ? 24 : 26)), `short tags on the tall board are small: ${JSON.stringify(tags)}`);
+  const pieces = await page.evaluate(() => [0, 1, 2, 3].map(k => { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = window.boomtown.art.token(k, '#fffaf0'); return g.innerHTML; }));
+  const owned = tags.filter(t => st.owner[t.i] >= 0);
+  assert.ok(owned.length >= 8, 'the scene has few owned lots');
+  for (const t of tags) {
+    assert.equal(t.piece, st.owner[t.i] >= 0 ? pieces[st.tokens[st.owner[t.i]]] : null, `the tag on space ${t.i} does not carry its owner's piece`);
+    if (t.piece) assert.equal(t.pieceIn, true, `the piece on space ${t.i}'s tag is outside the tag or over its amount`);
+  }
   assert.equal(await page.textContent('#board .cell[data-i="0"] .corner-sub'), '$' + await page.evaluate(() => window.boomtown.G.RULES.salary));
+  assert.deepEqual(await page.$$eval('#board .cell[data-i="3"] .tiny, #board .cell[data-i="16"] .tiny, #board .cell[data-i="23"] .tiny, #board .cell[data-i="10"] .tiny', ts => ts.map(t => t.textContent)),
+    ['NEWS', 'BUILD ½', 'NEWS', 'TAX']);
 }
 
 // On a small phone the buttons in the middle of the board keep to one line each.
