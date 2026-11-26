@@ -57,7 +57,7 @@ export const SPACE_HELP = {
   office: 'Buy any empty lot or depot in town at its price, if you want one.',
   yard: 'Build one level on one of your lots at half price.',
   square: 'Take everything in the kitty: fines and taxes paid since someone last stopped here.',
-  hall: 'Rezone a district: its land goes up 20%.',
+  hall: 'Rezone a district: its land goes up by a fifth of its first price, and its rents with it.',
   tax: 'The town assessor comes round.',
 };
 

@@ -635,6 +635,7 @@ function sinceLine(p) {
 
 let landMoved = null; // the last 'land' event: a sale's line says how far the land fell
 function describe(e) {
+  const moved = landMoved; // a rezoning's line says how far the land went, from the 'land' event just before it
   if (e.t === 'land') landMoved = e;
   else if (e.t !== 'collect' && e.t !== 'repaid' && e.t !== 'sell') landMoved = null; // a sale's own: land, collect, repaid, sell
   const sp = i => esc(SPACES[i].name);
@@ -666,7 +667,10 @@ function describe(e) {
     }
     case 'card': return `The Gazette: ${esc(CARD[e.card].head)}.`;
     case 'kitty': return `${nm(e.p)} took the kitty: ${money(e.amount)}.`;
-    case 'rezone': return `${nm(e.p)} rezoned ${DISTRICT[e.d].name}: land up 20%.`;
+    case 'rezone': {
+      const up = moved?.d === e.d ? moved : null, { pct } = W;
+      return `${nm(e.p)} rezoned ${DISTRICT[e.d].name}: ${up ? `land up from ${pct(up.from)} to ${pct(up.to)}` : 'its land was already as high as land goes'}.`;
+    }
     case 'over': return "Founders' Day. The game is over.";
   }
   return null;
@@ -866,10 +870,15 @@ function askDecision() {
       break;
     }
     case 'hall': {
-      h = `<h2 id="sheetTitle">City Hall</h2><p>Rezone one district: its land goes up 20%, and so does the rent on every lot in it. Land counts toward what you're worth.</p><div class="pick-list">`;
+      h = `<h2 id="sheetTitle">City Hall</h2><p>Rezone one district: ${W.SAYS.hall}, and its rents with it. Land counts toward what you're worth.</p><div class="pick-list">`;
+      // A district already as high as land goes can still be picked (were every one there, the question would have no
+      // answer); its row says rezoning it changes nothing.
+      const { pct } = W;
       for (const d of DISTRICTS) {
         const mine = LOTS_IN[d.id].filter(i => s.owner[i] === p).length;
-        h += `<button class="pick" data-c="${d.id}">${swatch(d.id)}<span>${d.name}<small>Land at ${Math.round(s.land[d.id] * 100)}%${mine ? ` · you own ${mine} of 3` : ''}</small></span><span class="cost">↑</span></button>`;
+        const now = s.land[d.id], top = now >= G.RULES.landMax;
+        const to = Math.min(G.RULES.landMax, Math.round((now + G.RULES.hall) * 1000) / 1000);
+        h += `<button class="pick" data-c="${d.id}">${swatch(d.id)}<span>${d.name}<small>${top ? `Land at ${pct(now)}, as high as it goes` : `Land at ${pct(now)} → ${pct(to)}`}${mine ? ` · you own ${mine} of 3` : ''}</small></span><span class="cost">${top ? '' : '↑'}</span></button>`;
       }
       h += '</div>';
       break;

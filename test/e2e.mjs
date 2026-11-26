@@ -302,6 +302,24 @@ await scene(`const lots = B.LOTS_IN.mill; lots.forEach(i => { s.owner[i] = -1; s
   await page.click('#sheet [data-c="pass"]');
 }
 
+// City Hall: each district's row says where its land goes, and one already as high as land goes says so and can still
+// be picked. A pick puts the land up by RULES.hall, and the line says from what to what, or that nothing moved.
+const HALL = "s.players[0].pos = 21; s.dice = [1, 2]; s.phase = 'decide'; s.pending = { kind: 'hall' }; s.land.mill = 1.22; s.land.hill = G.RULES.landMax;";
+for (const [d, line] of [['mill', 'You rezoned Mill Row: land up from 122% to 142%.'], ['hill', 'You rezoned Hilltop: its land was already as high as land goes.']]) {
+  await scene(HALL);
+  await page.waitForSelector('#sheet [data-c="mill"]');
+  assert.match(await page.textContent('#sheet [data-c="mill"] small'), /^Land at 122% → 142%/, "City Hall's row doesn't say where the land goes");
+  assert.match(await page.textContent('#sheet [data-c="hill"] small'), /^Land at 300%, as high as it goes/, "City Hall's row for a district at the top doesn't say so");
+  assert.equal(await page.$eval('#sheet [data-c="hill"]', b => b.disabled), false, 'a district at the top cannot be picked at City Hall');
+  const was = await page.evaluate(d => window.boomtown.state.land[d], d);
+  await page.click(`#sheet [data-c="${d}"]`);
+  await page.waitForFunction(() => window.boomtown.state.phase === 'manage' && !window.boomtown.busy);
+  const { land, log } = await page.evaluate(d => ({ land: window.boomtown.state.land[d], log: window.boomtown.state.log }), d);
+  const { hall, landMax } = await page.evaluate(() => window.boomtown.G.RULES);
+  assert.equal(land, Math.min(landMax, Math.round((was + hall) * 1000) / 1000), `City Hall moved ${d} from ${was} to ${land}`);
+  assert.ok(log.includes(line), `no "${line}" in the log: ${log.slice(-4)}`);
+}
+
 await scene();
 await page.click('#board .cell[data-i="17"]');
 assert.equal(await page.$$eval('#board .focus-ring', r => r.length), 1, 'a tapped space is not ringed on the board');

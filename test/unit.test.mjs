@@ -446,6 +446,13 @@ test('the rules text quotes the numbers in RULES', () => {
     assert.match(text, /Lumberyard/);
     assert.match(text, /estate sale/i);
   }
+  // City Hall adds RULES.hall to the land, a share of its first price, not of what it stands at now.
+  const fifth = { 0.2: 'a fifth' }[G.RULES.hall];
+  assert.ok(fifth, `RULES.hall is ${G.RULES.hall}: City Hall's help says it puts land up by a fifth of its first price`);
+  for (const [where, text] of [['How to play', rules], ['README', readme], ["City Hall's sheet", SPACE_HELP.hall], ['the help', W.SAYS.hall]]) {
+    assert.ok(text.includes(`up by ${fifth} of its first price`), `${where} doesn't say City Hall puts land up by ${fifth} of its first price`);
+    assert.doesNotMatch(text, /City Hall[^.]*20%/, `${where} says City Hall puts land up 20%`);
+  }
 });
 
 // Random legal players and the townsfolk, every action, 2-4 seats, short games: money adds up action by action (the

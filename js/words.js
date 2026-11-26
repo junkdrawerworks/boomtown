@@ -21,9 +21,12 @@ export const agree = (pl, you, they) => (isYou(pl) ? you : they);
 // The rules in words, built from RULES so the text can't fall behind the numbers: How to play, the sheets and the
 // board's labels say them the same way.
 const R = G.RULES;
+export const pct = x => `${Math.round(x * 100)}%`; // a district's land, against its first price: 1.22 is 122%
+const share = x => ({ 0.1: 'a tenth', 0.2: 'a fifth', 0.25: 'a quarter', 0.5: 'half' }[x] ?? pct(x));
 export const SAYS = {
-  street: `each lot with a building on it adds ${Math.round(R.street * 100)}% to the rent of the other lots there, whoever owns them`,
+  street: `each lot with a building on it adds ${pct(R.street)} to the rent of the other lots there, whoever owns them`,
   tax: `${money(R.taxPerLevel)} for every building level you own, and never less than ${money(R.taxMin)}, into the kitty`,
+  hall: `its land goes up by ${share(R.hall)} of its first price`,
   depots: `rent is ${money(R.depotRent[1])}, or ${money(R.depotRent[2])} when one player owns both`,
 };
 const count = n => ['no', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
@@ -109,7 +112,7 @@ export function rulesHtml() {
       <li><b>Payday:</b> ${money(R.salary)} as you pass, ${money(R.salary + R.landBonus)} if you land on it.</li>
       <li><b>Land Office:</b> buy any empty lot in town.</li>
       <li><b>Town Square:</b> take the kitty, where fines and taxes collect.</li>
-      <li><b>City Hall:</b> rezone a district, putting its land up 20%.</li>
+      <li><b>City Hall:</b> rezone a district: ${SAYS.hall}, and its rents with it.</li>
     </ul>
     <h3>Round the board</h3>
     <ul>
