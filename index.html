@@ -30,12 +30,13 @@
     </header>
     <main class="play">
       <div class="board-wrap">
-        <svg id="board" role="group" aria-label="The board"></svg>
+        <!-- Before the board, so Tab reaches the buttons before the spaces. It's placed over the middle of the board. -->
         <div class="center" id="center">
           <div class="dice" id="dice"></div>
           <p class="say" id="say" aria-live="polite"></p>
           <div class="actions" id="actions"></div>
         </div>
+        <svg id="board" role="group" aria-label="The board"></svg>
       </div>
       <aside class="side">
         <div class="players" id="players"></div>

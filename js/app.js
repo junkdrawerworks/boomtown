@@ -33,6 +33,7 @@ let busy = false;              // something is animating; the buttons wait
 let note = '';                 // the line in the middle of the board
 let ringed = null;             // the space a sheet is about, ringed on the board while the sheet is open
 let unused = null;             // after a detour, which die (0 or 1) wasn't moved by: it's dimmed until the next roll
+let returnTo = null;           // where the focus was when a sheet opened, to go back to when it closes
 const view = createBoard($('board'), { onCell: i => showSpace(i) });
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -53,8 +54,19 @@ const isHumanTurn = () => s && s.phase !== 'over' && G.current(s).kind === 'huma
 const { swatch } = W;
 const ring = i => { ringed = i; if (s) view.focus(i); };
 
+// Keyboard and screen-reader players: the button the turn waits on (Roll the dice, the first move, End turn, Decide)
+// takes the focus when the buttons are redrawn, so the next press is always the next step.
+const adrift = el => !el || el === document.body || !el.isConnected || !!el.closest('[hidden]');
+function focusMain() {
+  const b = $('actions').querySelector('[data-main]');
+  b?.focus({ preventScroll: true });
+  return !!b;
+}
+
 // ---------- the title screen ----------
-function showTitle() {
+// `focus`: put the focus on Carry on, or Break ground. Not as the page opens, where it would draw the keyboard's ring on
+// a phone before anyone has touched it.
+function showTitle(focus = true) {
   gen++;
   closeSheet();
   $('app').hidden = true;
@@ -65,6 +77,7 @@ function showTitle() {
   drawSeats();
   drawLengths();
   document.title = 'Boomtown';
+  if (focus) (game ? $('resumeBtn') : $('startBtn')).focus({ preventScroll: true });
 }
 
 function drawSeats() {
@@ -198,18 +211,20 @@ function render() {
   drawLogList();
   drawDice();
   $('say').innerHTML = note;
-  // The buttons in the middle.
+  // The buttons in the middle. Emptying them drops the focus if it was on one, so it's put back on the new main button,
+  // unless the person is somewhere else (a space on the board, a sheet).
   const a = $('actions');
+  const was = document.activeElement, refocus = adrift(was) || a.contains(was);
   a.innerHTML = '';
   if (!human) return;
   if (s.phase === 'roll') {
     const since = sinceLine(p);
     if (since) { const el = document.createElement('p'); el.className = 'since'; el.innerHTML = since; a.append(el); }
-    a.append(btn('Roll the dice', 'primary big', onRoll));
+    a.append(btn('Roll the dice', 'primary big', onRoll, true));
     if (OWNABLE.some(i => s.owner[i] === p)) a.append(btn('Your lots', 'ghost', () => showLots()));
   } else if (s.phase === 'move') {
     for (const o of G.moveOptions(s)) {
-      const b = btn('', (o.detour ? 'secondary' : 'primary') + ' move-btn', () => onMove(o));
+      const b = btn('', (o.detour ? 'secondary' : 'primary') + ' move-btn', () => onMove(o), o.usable && !a.querySelector('[data-main]'));
       b.disabled = !o.usable;
       b.innerHTML = `<span class="n">${o.steps}</span><span class="what"><b>${o.detour ? 'Detour, one die' : 'Both dice'}</b>${preview(o)}</span>`;
       a.append(b);
@@ -223,17 +238,19 @@ function render() {
     const row = document.createElement('div');
     row.className = 'row';
     if (OWNABLE.some(i => s.owner[i] === p)) row.append(btn(n ? `Build (${n})` : 'Your lots', 'secondary', () => showLots()));
-    row.append(btn('End turn', 'primary', onEndTurn));
+    row.append(btn('End turn', 'primary', onEndTurn, true));
     a.append(row);
   } else if (s.phase === 'decide') {
-    a.append(btn('Decide', 'primary', () => askDecision()));
+    a.append(btn('Decide', 'primary', () => askDecision(), true));
   }
+  if (refocus && $('sheetWrap').hidden) focusMain();
 }
 
-function btn(text, cls, fn) {
+function btn(text, cls, fn, main = false) {
   const b = document.createElement('button');
   b.className = cls;
   b.textContent = text;
+  if (main) b.dataset.main = '';
   b.addEventListener('click', () => { if (!busy) fn(); });
   return b;
 }
@@ -599,7 +616,9 @@ function describe(e) {
 
 // ---------- sheets ----------
 let onSheetClose = null;
+// The focus goes to the sheet's first answer, and back where it was when the sheet closes.
 function openSheet(html, { light = false, closable = true, onClose = null } = {}) {
+  if ($('sheetWrap').hidden) returnTo = document.activeElement;
   $('sheetBody').innerHTML = (closable ? '<button class="close" data-close aria-label="Close">✕</button>' : '') + html;
   $('sheetWrap').hidden = false;
   $('sheetWrap').classList.toggle('light', light);
@@ -616,6 +635,12 @@ function closeSheet(byUser = false) {
   const f = onSheetClose;
   onSheetClose = null;
   if (ringed != null) ring(null);
+  if (was) {
+    const back = returnTo;
+    returnTo = null;
+    if (!adrift(back) && back.getClientRects().length) back.focus({ preventScroll: true });
+    else focusMain();
+  }
   if (was && byUser && f) f();
 }
 $('sheetBody').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeSheet(true); });
@@ -896,7 +921,8 @@ function finish() {
     closeSheet();
     note = `${head}. <button class="link" id="againLink">See the results</button>`;
     render();
-    $('againLink')?.addEventListener('click', finish);
+    const again = $('againLink');
+    if (again) { again.onclick = finish; again.focus({ preventScroll: true }); }
   });
 }
 
@@ -943,4 +969,4 @@ if ('serviceWorker' in navigator && window.isSecureContext && !window.BOOMTOWN_A
 }
 // For tests and screenshots: window.boomtown gives the state.
 window.boomtown = { get state() { return s; }, get busy() { return busy; }, G, start: startGame, render };
-showTitle();
+showTitle(false);

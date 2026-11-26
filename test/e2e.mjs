@@ -415,6 +415,58 @@ assert.equal(await page.textContent('#round'), 'Last round', 'the header does no
 assert.equal(await page.$eval('#round', el => el.classList.contains('last')), true, 'the last round is not marked out');
 assert.match(await page.textContent('#say'), /Founders' Day after this round\./, "the last round's first turn doesn't say Founders' Day comes after it");
 
+// Played with the keyboard alone, the focus is always on the next step after each one: Roll the dice, then the first
+// move, then the question's answer, then End turn, and Roll the dice again when the turn comes back. It's never dropped
+// on the page itself, and Tab goes from the menu to the buttons before the spaces.
+{
+  const kc = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+  const kp = await kc.newPage();
+  kp.on('pageerror', e => problems.push(e.message));
+  await kp.addInitScript(() => localStorage.setItem('boomtown.prefs', JSON.stringify({ speed: 'fast', sound: false, len: 'short', seats: [{ who: 'you', name: 'You' }, { who: 'mabel' }, { who: 'none' }, { who: 'none' }] })));
+  await kp.goto(base);
+  const focused = () => kp.evaluate(() => {
+    const a = document.activeElement;
+    return { tag: a.tagName, text: a.textContent.trim().replace(/\s+/g, ' '), sheet: !!a.closest('#sheet'), move: a.classList.contains('move-btn'), cell: a.classList.contains('cell') ? +a.dataset.i : null };
+  });
+  const st = () => kp.evaluate(() => { const b = window.boomtown; return { phase: b.state.phase, turn: b.state.turn, busy: b.busy, sheet: !document.getElementById('sheetWrap').hidden }; });
+  await kp.focus('#startBtn');
+  await kp.keyboard.press('Enter');
+  await kp.waitForSelector('#actions button:has-text("Roll the dice")');
+  for (let turn = 0; turn < 3; turn++) {
+    assert.equal((await focused()).text, 'Roll the dice', `turn ${turn}: the focus is not on Roll the dice: ${JSON.stringify(await focused())}`);
+    if (turn === 0) {
+      await kp.keyboard.press('Shift+Tab');
+      assert.equal(await kp.evaluate(() => document.activeElement.id), 'menuBtn', 'Shift+Tab from Roll the dice does not go to the menu');
+      await kp.keyboard.press('Tab');
+      assert.equal((await focused()).text, 'Roll the dice', 'Tab from the menu does not go to Roll the dice');
+    }
+    await kp.keyboard.press('Enter');
+    await kp.waitForSelector('.move-btn');
+    await until(async () => !(await st()).busy, 5000, 'the roll did not finish');
+    assert.equal((await focused()).move, true, `turn ${turn}: after rolling, the focus is not on a move: ${JSON.stringify(await focused())}`);
+    await kp.keyboard.press('Enter');
+    for (let k = 0; k < 20; k++) {
+      await until(async () => { const x = await st(); return x.sheet || (!x.busy && x.phase === 'manage'); }, 10000, 'the move did not finish'); // a Gazette headline is read while the move goes on
+      if ((await st()).phase === 'manage' && !(await st()).sheet) break;
+      const f = await focused();
+      assert.ok(f.sheet, `turn ${turn}: a question is open but the focus is not on it: ${JSON.stringify(f)}`);
+      await kp.keyboard.press('Enter');
+      await kp.waitForTimeout(300);
+    }
+    await until(async () => (await focused()).text === 'End turn', 5000, `turn ${turn}: the focus is not on End turn`);
+    await kp.keyboard.press('Enter');
+    await kp.waitForSelector('#actions button:has-text("Roll the dice")', { timeout: 30000 });
+  }
+  // Leave the table from the menu: the focus goes to Carry on, and carrying on puts it on Roll the dice.
+  await kp.click('#menuBtn');
+  await kp.click('#sheet [data-a="leave"]');
+  assert.equal(await kp.evaluate(() => document.activeElement.id), 'resumeBtn', 'leaving the table does not put the focus on Carry on');
+  await kp.keyboard.press('Enter');
+  await kp.waitForSelector('#actions button:has-text("Roll the dice")');
+  assert.equal((await focused()).text, 'Roll the dice', 'carrying on does not put the focus on Roll the dice');
+  await kc.close();
+}
+
 // Break ground with a game left unfinished asks before it starts over that game, and Carry on says which game it is.
 await scene('', { round: 4 });
 await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(window.boomtown.state)));
