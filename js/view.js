@@ -49,10 +49,19 @@ export function createBoard(svg, { onCell } = {}) {
     <g class="frame"></g>
     <g class="marks"></g>
     <g class="tokens"></g>
+    <g class="kbd" aria-hidden="true"></g>
     <g class="fx"></g>`;
   const cellsG = svg.querySelector('.cells'), marksG = svg.querySelector('.marks');
-  const tokensG = svg.querySelector('.tokens'), fxG = svg.querySelector('.fx');
+  const tokensG = svg.querySelector('.tokens'), kbdG = svg.querySelector('.kbd'), fxG = svg.querySelector('.fx');
   const cells = [];
+  // The keyboard's ring on a space is drawn in its own layer over the frame and the pieces, which would cover most of
+  // a ring drawn on the space itself.
+  let kbdAt = null; // the space the keyboard is on, ringed while the ring would show (:focus-visible)
+  const drawKbd = () => {
+    if (kbdAt == null) { kbdG.innerHTML = ''; return; }
+    const r = cellRect(kbdAt, H), box = `x="${r.x + 6}" y="${r.y + 6}" width="${r.w - 12}" height="${r.h - 12}" rx="6"`;
+    kbdG.innerHTML = `<rect class="ink" ${box}/><rect class="gold" ${box}/>`;
+  };
   for (let i = 0; i < N; i++) {
     const g = document.createElementNS(NS, 'g');
     g.classList.add('cell');
@@ -61,6 +70,8 @@ export function createBoard(svg, { onCell } = {}) {
     g.setAttribute('role', 'button');
     g.addEventListener('click', () => onCell?.(i));
     g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCell?.(i); } });
+    g.addEventListener('focus', () => { if (g.matches(':focus-visible')) { kbdAt = i; drawKbd(); } });
+    g.addEventListener('blur', () => { if (kbdAt === i) { kbdAt = null; drawKbd(); } });
     cellsG.appendChild(g);
     cells.push(g);
   }
@@ -141,6 +152,7 @@ export function createBoard(svg, { onCell } = {}) {
       m += `<rect class="focus-ring" x="${r.x + 3}" y="${r.y + 3}" width="${r.w - 6}" height="${r.h - 6}" rx="6"/>`;
     }
     marksG.innerHTML = m;
+    drawKbd(); // the board may have changed shape
   };
 
   // Ring one space (or none) without changing the other marks.

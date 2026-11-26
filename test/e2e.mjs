@@ -458,6 +458,10 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
       assert.equal(await kp.evaluate(() => document.activeElement.id), 'menuBtn', 'Shift+Tab from Roll the dice does not go to the menu');
       await kp.keyboard.press('Tab');
       assert.equal((await focused()).text, 'Roll the dice', 'Tab from the menu does not go to Roll the dice');
+      // The ring is ink with gold inside it, which shows on the cream paper as well as the felt (gold alone is 1.8:1).
+      await kp.waitForTimeout(200); // the buttons' shadow eases in
+      assert.deepEqual(await kp.evaluate(() => { const c = getComputedStyle(document.activeElement); return [c.outlineColor, c.outlineWidth, /rgb\(226, 178, 60\) 0px 0px 0px 5px/.test(c.boxShadow)]; }),
+        ['rgb(42, 36, 32)', '3px', true], 'the focus ring is not ink and gold');
     }
     await kp.keyboard.press('Enter');
     await kp.waitForSelector('.move-btn');
@@ -480,6 +484,7 @@ assert.match(await page.textContent('#say'), /Founders' Day after this round\./,
   for (let k = 0; k < 4 && (await focused()).cell == null; k++) await kp.keyboard.press('Tab');
   const cell = (await focused()).cell;
   assert.notEqual(cell, null, 'Tab from the buttons does not go on to the spaces');
+  assert.equal(await kp.$$eval('#board .kbd rect', r => r.length), 2, 'the space with the focus is not ringed');
   await kp.keyboard.press('Enter');
   assert.equal((await st()).sheet, true, 'Enter on a space does not open it');
   assert.equal(await kp.evaluate(() => document.activeElement.id), 'sheetTitle', "a space's sheet does not put the focus on its name");

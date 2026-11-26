@@ -73,7 +73,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board.tall .dest text { font-size: 28px; }
 #board .arrow { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 #board .cell { cursor: pointer; outline: none; transform-box: fill-box; transform-origin: center; }
-#board .cell:focus-visible .bg { stroke: var(--brick); stroke-width: 6; }
+/* The keyboard's ring on a space (see view.js): gold edged in ink, like the focus everywhere else. */
+#board .kbd rect { fill: none; pointer-events: none; }
+#board .kbd .ink { stroke: var(--ink); stroke-width: 11; }
+#board .kbd .gold { stroke: var(--gold); stroke-width: 6; }
 #board .cell.pop { animation: pop .55s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.09); } 100% { transform: scale(1); } }
 #board .float { font-size: 38px; paint-order: stroke; stroke: var(--paper); stroke-width: 7px; stroke-linejoin: round; }
@@ -125,7 +128,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .primary:active, .secondary:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
 .primary:disabled, .secondary:disabled { opacity: .45; cursor: default; transform: none; box-shadow: 0 3px 0 var(--ink); }
 .primary.big { font-size: 18px; padding: 12px 16px; }
-:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+/* Focus shows on the cream paper and on the felt alike: an ink ring with a gold one inside it. */
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--gold); }
+.primary:focus-visible, .secondary:focus-visible, .pick:focus-visible { box-shadow: 0 3px 0 var(--ink), 0 0 0 5px var(--gold); }
 /* A sheet or its heading takes the focus only so a screen reader starts there: no ring. */
 .sheet:focus-visible, .sheet [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; }
 
