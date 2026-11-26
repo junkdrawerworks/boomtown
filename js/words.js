@@ -92,6 +92,26 @@ export function lotFacts(s, i, { warn = false, under = '' } = {}) {
   return h;
 }
 
+// Founders' Day's story, under the headline, from the final standings (G.standings): [the story, one fact from the
+// game]. With one person at the table who didn't win, the story is theirs: "You came second, $280 behind Dot." Otherwise
+// it's the winner's: "Worth $3,040, $320 ahead of Dot." The fact is the game's biggest rent, when one was paid.
+const ORDINAL = ['first', 'second', 'third', 'fourth'];
+export function foundersDay(s, st) {
+  const [a, b] = st, name = q => s.players[q].name;
+  const people = s.players.flatMap((pl, q) => (pl.kind === 'human' ? [q] : []));
+  let story;
+  if (people.length === 1 && people[0] !== a.p) {
+    const k = st.findIndex(x => x.p === people[0]), me = st[k];
+    story = `${Who(s.players[me.p])} came ${ORDINAL[k]}, ${me.worth < a.worth ? `${money(a.worth - me.worth)} behind ${name(a.p)}` : `level with ${name(a.p)}, who had more cash in hand`}.`;
+  } else {
+    const ahead = a.worth > b.worth ? `${money(a.worth - b.worth)} ahead of ${name(b.p)}` : a.cash > b.cash ? `level with ${name(b.p)}, with more cash in hand` : `level with ${name(b.p)}`;
+    story = `Worth ${money(a.worth)}, ${ahead}.`;
+  }
+  const r = s.biggestRent;
+  const fact = r ? `Biggest rent: ${Who(s.players[r.from])} paid ${who(s.players[r.to])} ${money(r.amount)} on ${SPACES[r.at].name}, in round ${r.round}.` : '';
+  return [story, fact];
+}
+
 // How to play.
 export function rulesHtml() {
   return `<div class="rules"><h2 id="sheetTitle">How to play</h2>

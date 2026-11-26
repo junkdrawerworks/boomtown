@@ -723,3 +723,28 @@ test('the copy the screen shows, stepped through each event, ends where the game
   }
   for (const t of ['roll', 'detour', 'move', 'collect', 'loan', 'pay', 'repaid', 'interest', 'land', 'buy', 'buyout', 'build', 'sell', 'turn', 'over', 'card', 'kitty', 'rezone']) assert.ok(kinds.has(t), `no ${t} event was tried`);
 });
+
+// Founders' Day tells a story under its headline: the one person's place when they didn't win, or else how far the
+// winner finished ahead, level when they tied; and the game's biggest rent, which the rules keep as it's paid.
+test("Founders' Day's story and its fact", () => {
+  const s = G.newGame({ seats: [{ name: 'You', kind: 'human', token: 0 }, { name: 'Dot', kind: 'bot', bot: 'dot', token: 1 }, { name: 'Gus', kind: 'bot', bot: 'gus', token: 2 }], seed: 3 });
+  const st = worths => worths.map(([p, worth, cash = 0]) => ({ p, worth, cash }));
+  assert.deepEqual(W.foundersDay(s, st([[0, 3040], [1, 2720], [2, 1000]])), ['Worth $3,040, $320 ahead of Dot.', '']);
+  assert.equal(W.foundersDay(s, st([[1, 3040], [2, 2720], [0, 2500]]))[0], 'You came third, $540 behind Dot.');
+  assert.equal(W.foundersDay(s, st([[1, 3040, 50], [0, 3040, 10], [2, 100]]))[0], 'You came second, level with Dot, who had more cash in hand.');
+  assert.equal(W.foundersDay(s, st([[0, 3040, 50], [1, 3040, 10], [2, 100]]))[0], 'Worth $3,040, level with Dot, with more cash in hand.');
+  s.players[2].kind = 'human';
+  assert.equal(W.foundersDay(s, st([[1, 3040], [2, 2720], [0, 2500]]))[0], 'Worth $3,040, $320 ahead of Gus.', 'with two people at the table the story is the winner\'s');
+  // The biggest rent: the rules keep the largest paid, and who paid whom where.
+  const at = SPACES.findIndex(x => x.name === 'Ferry Landing');
+  s.owner[at] = 1;
+  for (const [p, rent] of [[0, 120], [2, 300], [0, 200]]) {
+    s.turn = p; s.phase = 'decide'; s.pending = { kind: 'rent', at, owner: 1, rent, buyout: null };
+    G.decide(s, 'pay');
+  }
+  assert.deepEqual(s.biggestRent, { amount: 300, from: 2, to: 1, at, round: 1 });
+  s.players[2].kind = 'bot';
+  assert.equal(W.foundersDay(s, st([[0, 3040], [1, 2720], [2, 1000]]))[1], 'Biggest rent: Gus paid Dot $300 on Ferry Landing, in round 1.');
+  s.biggestRent.from = 0;
+  assert.equal(W.foundersDay(s, st([[0, 3040], [1, 2720], [2, 1000]]))[1], 'Biggest rent: You paid Dot $300 on Ferry Landing, in round 1.');
+});

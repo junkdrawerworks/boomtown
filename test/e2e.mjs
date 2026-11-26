@@ -173,6 +173,17 @@ for (let k = 0; k < 2000; k++) {
 await page.waitForSelector('.standings li', { timeout: 10000 });
 assert.equal(await page.$$eval('.standings li', l => l.length), 2, "Founders' Day ranks both players");
 assert.match(await page.textContent('#sheet .gazette .head'), /richest in Boomtown/i);
+// Under the headline, the story: how far the winner finished ahead, or where you came; then the game's biggest rent, the
+// largest in What happened.
+assert.match(await page.textContent('#sheet .gazette .body'), /^(Worth \$[\d,]+, (\$[\d,]+ ahead of Mabel|level with Mabel[a-z ,]*)|You came second, (\$[\d,]+ behind Mabel|level with Mabel, who had more cash in hand))\.$/);
+{
+  const rents = (await page.evaluate(() => window.boomtown.state.log)).map(l => l.match(/ paid (?:you|Mabel) \$([\d,]+) rent on /)?.[1]).filter(Boolean).map(x => +x.replace(/,/g, ''));
+  if (rents.length) {
+    const fact = await page.textContent('#sheet .gazette .fact');
+    assert.match(fact, /^Biggest rent: (You|Mabel) paid (you|Mabel) \$[\d,]+ on [A-Z][A-Za-z' ]+, in round \d+\.$/);
+    assert.ok(fact.includes(`$${Math.max(...rents).toLocaleString('en-US')} on`), `the biggest rent is not the largest in What happened (${Math.max(...rents)}): ${fact}`);
+  }
+}
 assert.equal(await page.isVisible('#sheet .chart'), true);
 // Founders' Day is read out by its headline, its ✕ isn't covered by the Gazette, and the chart says where each player
 // ended.

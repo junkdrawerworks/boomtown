@@ -350,6 +350,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .gazette .dateline { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid var(--ink); padding: 3px 0; display: flex; justify-content: space-between; }
 .gazette .head { font: 26px/1.1 var(--slab); margin: 10px 0 6px; text-transform: uppercase; }
 .gazette .body { font-size: 15px; font-family: Georgia, serif; }
+/* Founders' Day: one thing from the game, under the story. */
+.gazette .fact { font-size: 12.5px; font-family: Georgia, serif; font-style: italic; border-top: 1px solid var(--ink); margin-top: 8px; padding-top: 6px; }
 
 /* The townsfolk's news, over the middle of the board (not the spaces round it), so where they landed still shows. */
 .toast {

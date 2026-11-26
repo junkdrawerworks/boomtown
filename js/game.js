@@ -64,6 +64,7 @@ export function newGame({ seats, rounds = ROUNDS.standard[seats.length], seed = 
     land: Object.fromEntries(DISTRICTS.map(d => [d.id, 1])),
     kitty: RULES.kittyStart,
     deck: [], dice: null, pending: null, built: [], log: [],
+    biggestRent: null, // the game's biggest rent so far, for Founders' Day: { amount, from, to, at, round }
   };
   s.deck = shuffle(s, CARDS.map(c => c.id));
   s.players.forEach((p, i) => p.history.push(netWorth(s, i)));
@@ -287,8 +288,10 @@ export function decide(s, choice) {
         pay(s, ev, p, q.owner, q.buyout, `buying ${SPACES[q.at].name}`);
         s.owner[q.at] = p;
         ev.push({ t: 'buyout', p, from: q.owner, at: q.at, price: q.buyout });
-      } else if (choice === 'pay') pay(s, ev, p, q.owner, q.rent, `rent on ${SPACES[q.at].name}`);
-      else throw new Error('pay or buyout');
+      } else if (choice === 'pay') {
+        pay(s, ev, p, q.owner, q.rent, `rent on ${SPACES[q.at].name}`);
+        if (q.rent > (s.biggestRent?.amount ?? 0)) s.biggestRent = { amount: q.rent, from: p, to: q.owner, at: q.at, round: s.round };
+      } else throw new Error('pay or buyout');
       break;
     case 'office': case 'estate':
       if (choice !== 'pass') {
