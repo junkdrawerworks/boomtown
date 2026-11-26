@@ -10,7 +10,7 @@ import {
 export const BOTS = {
   mabel: { name: 'Mabel', line: 'Keeps a cushion and never overreaches.', reserve: 300, buy: 0.9, build: 0.8, buyout: 0.6, tall: 0.9 },
   rusty: { name: 'Rusty', line: 'Buys anything with a fence round it.', reserve: 60, buy: 1.4, build: 1.0, buyout: 1.0, tall: 0.8 },
-  dot: { name: 'Dot', line: 'Wants whole streets, and will force a sale to get one.', reserve: 150, buy: 1.0, build: 1.0, buyout: 1.6, tall: 1.0 },
+  dot: { name: 'Dot', line: 'Wants whole streets, and will force a sale to get one.', reserve: 150, buy: 1.0, build: 1.0, buyout: 1.6, tall: 1.0, streets: true },
   gus: { name: 'Gus', line: 'Builds tall and builds early.', reserve: 120, buy: 1.0, build: 1.4, buyout: 0.8, tall: 1.4 },
 };
 
@@ -35,17 +35,35 @@ function want(s, p, i, extra = 0) {
   return w;
 }
 
+// What owning space i would do for the current player's street: 'whole' if it finishes the district (or the pair of
+// depots), 'short' if it leaves them one lot short with that lot still for sale, otherwise null.
+function streetAfter(s, i) {
+  const p = s.turn, sp = SPACES[i];
+  const lots = sp.type === 'depot' ? DEPOTS : LOTS_IN[sp.district];
+  const mineAfter = lots.filter(j => j === i || s.owner[j] === p).length;
+  if (mineAfter === lots.length) return 'whole';
+  if (mineAfter === lots.length - 1 && lots.every(j => j === i || s.owner[j] === p || s.owner[j] < 0)) return 'short';
+  return null;
+}
+
 // What forcing the sale of space i is worth to the current player, in dollars: the land itself, the rent it saves,
 // and a good deal more if it finishes a district (or the pair of depots).
 function buyoutWorth(s, i) {
-  const p = s.turn, sp = SPACES[i], value = landValue(s, i);
-  const lots = sp.type === 'depot' ? DEPOTS : LOTS_IN[sp.district];
-  const mineAfter = lots.filter(j => j === i || s.owner[j] === p).length;
+  const value = landValue(s, i), street = streetAfter(s, i);
   const late = 1 - s.round / s.rounds;
   let worth = value + rentFor(s, i);
-  if (mineAfter === lots.length) worth += value * (sp.type === 'depot' ? 1 : 2.5) * (0.4 + late);
-  else if (mineAfter === lots.length - 1 && lots.every(j => j === i || s.owner[j] === p || s.owner[j] < 0)) worth += value * 0.6 * late;
+  if (street === 'whole') worth += value * (SPACES[i].type === 'depot' ? 1 : 2.5) * (0.4 + late);
+  else if (street === 'short') worth += value * 0.6 * late;
   return worth;
+}
+
+// A townsperson who wants whole streets (Dot) forces a sale only to get one: when it finishes a district, or leaves
+// her one lot short with that lot still for sale and at least three rounds left to buy it.
+const STREET_ROUNDS = 3;
+function forStreet(s, i) {
+  if (!me(s).streets) return true;
+  const street = streetAfter(s, i);
+  return street === 'whole' || (street === 'short' && s.rounds - s.round >= STREET_ROUNDS);
 }
 
 // The cash this bot wants to hold back, scaled to the rents around the board.
@@ -68,9 +86,9 @@ export function wouldBuy(s, i, cash = current(s).cash, price = landValue(s, i)) 
 
 // Would this bot make the owner of lot i sell it? Only if it's worth the price to this bot, keeps some of its
 // cushion, and isn't the final round: then a sale costs half as much again as the land adds to worth, and saves
-// only one rent.
+// only one rent. Dot also wants it for a street (see forStreet).
 export function wouldForce(s, i, cash = current(s).cash, price = buyoutPrice(s, i)) {
-  if (price == null || price > cash || s.round >= s.rounds) return false;
+  if (price == null || price > cash || s.round >= s.rounds || !forStreet(s, i)) return false;
   return buyoutWorth(s, i) * me(s).buyout >= price && cash - price >= reserve(s) * 0.4;
 }
 

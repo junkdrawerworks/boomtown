@@ -353,6 +353,42 @@ test('in the final round a townsperson never forces a sale: it costs half as muc
   }
 });
 
+test('Dot forces a sale only to get a whole street', () => {
+  // Rusty owns one Hilltop lot; the other two are still for sale, or one of them is Mabel's, or both are the forcer's.
+  const sale = (bot, { mine = 0, mabels = 0, round = 10 } = {}) => {
+    const s = botGame(bot, { round });
+    const [a, b, c] = LOTS_IN.hill;
+    s.owner[c] = s.players.findIndex(pl => pl.bot === 'rusty');
+    [a, b].slice(0, mine).forEach(i => { s.owner[i] = 0; });
+    [b, a].slice(0, mabels).forEach(i => { s.owner[i] = s.players.findIndex(pl => pl.bot === 'mabel'); });
+    s.players[0].cash = 3000;
+    goTo(s, c);
+    assert.equal(s.pending.kind, 'rent');
+    return chooseDecision(s);
+  };
+  assert.equal(sale('dot'), 'pay', 'a lone lot, the rest unsold, but Dot would still be two short');
+  assert.equal(sale('dot', { mine: 1 }), 'buyout', 'one short, and the last lot still for sale');
+  assert.equal(sale('dot', { mine: 1, round: 18 }), 'pay', 'one short with two rounds left to buy the last lot');
+  assert.equal(sale('dot', { mine: 1, round: 17 }), 'buyout', 'one short with three rounds left');
+  assert.equal(sale('dot', { mine: 1, mabels: 1 }), 'pay', "one short, but the last lot is Mabel's");
+  assert.equal(sale('dot', { mine: 2 }), 'buyout', 'it finishes Hilltop');
+  // It's her wish for streets that stops her: without it she'd force the sale that gets her nowhere.
+  BOTS.dot.streets = false;
+  try { assert.equal(sale('dot'), 'buyout'); } finally { BOTS.dot.streets = true; }
+  // A depot is half of a pair: Dot forces the sale of one only when the other is hers or still for sale.
+  const depot = other => {
+    const s = botGame('dot');
+    const [d, e] = DEPOTS;
+    s.owner[d] = 1; s.owner[e] = other;
+    s.players[0].cash = 3000;
+    goTo(s, d);
+    return chooseDecision(s);
+  };
+  assert.equal(depot(0), 'buyout');
+  assert.equal(depot(-1), 'buyout');
+  assert.equal(depot(2), 'pay');
+});
+
 test("the move a townsperson picks never counts a buy or a forced sale they'd then turn down", () => {
   // Mabel keeps a $300 cushion: with $200 to spare after the price she passes, so the move there scores nothing for it.
   const offer = spare => {

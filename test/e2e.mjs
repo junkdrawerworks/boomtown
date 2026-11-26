@@ -965,8 +965,10 @@ await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(w
 }
 
 // What the townsfolk did to you while you waited is waiting for you when your turn comes round, even after a reload,
-// and goes once you roll: here Dot forces a sale of one of your lots, and part of the price pays off your loan.
+// and goes once you roll: here Dot forces a sale of one of your lots to finish its district, and part of the price
+// pays off your loan.
 await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0 && (s.owner[j] = 0, G.buyoutPrice(s, j) != null));
+  for (const j of B.LOTS_IN[B.SPACES[i].district]) if (j !== i) s.owner[j] = 3;
   s.players[0].debt = 100; s.players[3].cash = 5000; s.players[3].pos = i;
   s.turn = 3; s.dice = [1, 2]; s.phase = 'decide';
   s.pending = { kind: 'rent', at: i, owner: 0, rent: G.rentFor(s, i), buyout: G.buyoutPrice(s, i) };
