@@ -135,7 +135,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .primary.big { font-size: 18px; padding: 12px 16px; }
 /* Focus shows on the cream paper and on the felt alike: an ink ring with a gold one inside it. */
 :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--gold); }
-.primary:focus-visible, .secondary:focus-visible, .pick:focus-visible { box-shadow: 0 3px 0 var(--ink), 0 0 0 5px var(--gold); }
+.primary:focus-visible, .secondary:focus-visible { box-shadow: 0 3px 0 var(--ink), 0 0 0 5px var(--gold); }
+.pick:focus-visible { box-shadow: 0 2px 0 var(--ink), 0 0 0 5px var(--gold); }
+/* Only the keyboard needs the ring: after a tap or a click (.tapped, set in app.js) a button the game puts the focus on
+   shows none. */
+.tapped :focus-visible { outline: none; box-shadow: none; }
+.tapped .primary:focus-visible, .tapped .secondary:focus-visible { box-shadow: 0 3px 0 var(--ink); }
+.tapped .pick:focus-visible { box-shadow: 0 2px 0 var(--ink); }
 /* A sheet or its heading takes the focus only so a screen reader starts there: no ring. */
 .sheet:focus-visible, .sheet [tabindex="-1"]:focus-visible { outline: none; box-shadow: none; }
 

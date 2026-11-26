@@ -114,6 +114,10 @@ const answer = async () => {
 };
 await page.click('#actions button:has-text("Roll the dice")');
 await page.waitForSelector('.move-btn');
+// The focus moves on to the first move (see the keyboard's turn below), but after a tap it draws no ring.
+await page.waitForFunction(() => !window.boomtown.busy);
+assert.deepEqual(await page.evaluate(() => [document.activeElement.classList.contains('move-btn'), getComputedStyle(document.activeElement).outlineStyle]), [true, 'none'],
+  'after a tap on Roll the dice, the first move is not focused, or shows the keyboard\'s ring');
 const moves = await page.$$eval('.move-btn', bs => bs.map(b => b.textContent));
 assert.ok(moves.length >= 2 && /Both dice/.test(moves[0]), 'both dice and a detour are offered');
 assert.equal(await page.$$eval('#board .dest', d => d.length), moves.length, 'the board marks where each move lands');

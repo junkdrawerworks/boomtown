@@ -73,6 +73,11 @@ function focusMain() {
   b?.focus({ preventScroll: true });
   return !!b;
 }
+// Chromium draws the keyboard's ring on a button the focus is moved to even after a tap (the button tapped has gone, so
+// it can't tell), so the page notes whether the last thing the person did was a tap or a key: after a tap or a click
+// the ring isn't drawn (see .tapped in app.css).
+addEventListener('pointerdown', () => document.documentElement.classList.add('tapped'), true);
+addEventListener('keydown', () => document.documentElement.classList.remove('tapped'), true);
 
 // ---------- the title screen ----------
 // `focus`: put the focus on Carry on, or Break ground. Not as the page opens, where it would draw the keyboard's ring on

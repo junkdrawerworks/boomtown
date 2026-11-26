@@ -82,7 +82,7 @@ export function createBoard(svg, { onCell, onDest } = {}) {
     g.setAttribute('role', 'button');
     g.addEventListener('click', () => tap(i));
     g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(i); } });
-    g.addEventListener('focus', () => { if (g.matches(':focus-visible')) { kbdAt = i; drawKbd(); } });
+    g.addEventListener('focus', () => { if (g.matches(':focus-visible') && !document.documentElement.classList.contains('tapped')) { kbdAt = i; drawKbd(); } });
     g.addEventListener('blur', () => { if (kbdAt === i) { kbdAt = null; drawKbd(); } });
     cellsG.appendChild(g);
     cells.push(g);
