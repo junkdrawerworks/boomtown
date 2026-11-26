@@ -215,6 +215,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pick .swatch { width: 14px; height: 14px; }
 .pick small { display: block; color: var(--muted); font-size: 12px; }
 .pick .cost { font-weight: 800; font-variant-numeric: tabular-nums; }
+.pick .sell { padding: 6px 9px; font-size: 14px; white-space: nowrap; }
+.pick .sell.sure { background: #fff; color: var(--brick-deep); border-color: var(--brick-deep); box-shadow: 0 3px 0 var(--brick-deep); }
 
 /* the Gazette */
 .gazette { background: #f7f1e1; border: 2px solid var(--ink); padding: 12px 14px; text-align: center; transform: rotate(-.8deg); box-shadow: 4px 4px 0 #0002; }

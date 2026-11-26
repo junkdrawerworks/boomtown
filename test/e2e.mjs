@@ -271,6 +271,27 @@ await scene();
   await page.click('#sheet [data-close]');
 }
 
+// Your lots sells a building only on a second tap: the first turns "Sell $30" into "Sure? +$30" for a few seconds.
+// The line after says what the sale did to the district's land.
+await scene("const i = B.LOTS_IN.mill[0]; s.owner[i] = 0; s.level[i] = 2; s.land.mill = 1.2; s.phase = 'manage'; s.dice = [1, 2]; window.sold = i;");
+{
+  await page.click('#actions button:has-text("Build"), #actions button:has-text("Your lots")');
+  const level = () => page.evaluate(() => window.boomtown.state.level[window.sold]);
+  const b = `#sheet [data-sell="${await page.evaluate(() => window.sold)}"]`;
+  assert.match(await page.textContent(b), /^Sell \$\d+$/, 'the sell button has no words');
+  await page.click(b);
+  assert.equal(await level(), 2, 'one tap sold the building');
+  assert.match(await page.textContent(b), /^Sure\? \+\$\d+$/, 'the first tap does not ask');
+  await page.waitForTimeout(3300);
+  assert.match(await page.textContent(b), /^Sell \$\d+$/, 'Sure? stays after a few seconds');
+  await page.click(b);
+  await page.click(b);
+  await page.waitForFunction(() => window.boomtown.state.level[window.sold] === 1);
+  await page.waitForTimeout(800);
+  assert.match(await page.textContent('#say'), /^You sold the shop on Tannery Lane back for \$\d+\. Mill Row land fell 8%\.$/, "the sale doesn't say what it did to the land");
+  await page.click('#sheet [data-close]');
+}
+
 // Each lot you can build on has its badge on that lot, not piled in a corner of the board.
 await scene("[...B.LOTS_IN.river, ...B.LOTS_IN.bank].forEach(i => { s.owner[i] = 0; s.level[i] = 0; }); s.players[0].cash = 5000; s.phase = 'manage'; s.dice = [1, 2];");
 await page.waitForTimeout(400);

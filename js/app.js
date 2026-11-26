@@ -522,7 +522,10 @@ function sinceLine(p) {
   return `<b>Since your turn:</b> ${parts.slice(0, 4).join(' ')}${more}`;
 }
 
+let landMoved = null; // the last 'land' event: a sale's line says how far the land fell
 function describe(e) {
+  if (e.t === 'land') landMoved = e;
+  else if (e.t !== 'collect' && e.t !== 'sell') landMoved = null; // a sale's own events are land, collect, sell
   const sp = i => esc(SPACES[i].name);
   switch (e.t) {
     case 'roll': return `${nm(e.p)} rolled ${e.dice[0]} and ${e.dice[1]}.`;
@@ -543,7 +546,11 @@ function describe(e) {
     case 'buy': return `${nm(e.p)} bought ${sp(e.at)} for ${money(e.price)}.`;
     case 'buyout': return `${nm(e.p)} made ${who(e.from)} sell ${sp(e.at)}, for ${money(e.price)}.`;
     case 'build': return `${nm(e.p)} built a ${G.LEVEL_NAMES[e.level].toLowerCase()} on ${sp(e.at)}.`;
-    case 'sell': return `${nm(e.p)} sold a ${G.LEVEL_NAMES[e.level + 1].toLowerCase()} on ${sp(e.at)} back for ${money(e.refund)}.`;
+    case 'sell': {
+      const d = SPACES[e.at].district, fell = landMoved?.d === d ? Math.round((landMoved.from - landMoved.to) * 100) : 0;
+      landMoved = null;
+      return `${nm(e.p)} sold the ${G.LEVEL_NAMES[e.level + 1].toLowerCase()} on ${sp(e.at)} back for ${money(e.refund)}.${fell > 0 ? ` ${DISTRICT[d].name} land fell ${fell}%.` : ''}`;
+    }
     case 'card': return `The Gazette: ${esc(CARD[e.card].head)}.`;
     case 'kitty': return `${nm(e.p)} took the kitty: ${money(e.amount)}.`;
     case 'rezone': return `${nm(e.p)} rezoned ${DISTRICT[e.d].name}: land up 20%.`;
@@ -624,7 +631,7 @@ function showLots() {
     const next = lv < G.RULES.maxLevel ? `${G.LEVEL_NAMES[lv + 1]}: rent ${money(G.rentFor(s, i, lv + 1))}` : 'Built as tall as it goes';
     h += `<div class="pick" style="grid-template-columns: 14px 1fr auto auto; cursor:default">${swatch(sp.district)}
       <span>${esc(sp.name)}<small>${G.LEVEL_NAMES[lv]}, rent ${money(G.rentFor(s, i))} · ${s.phase === 'manage' && !c.ok && c.reason && lv < G.RULES.maxLevel ? esc(c.reason) : next}</small></span>
-      ${canAct && G.canSell(s, p, i) ? `<button class="secondary" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} for ${money(G.sellValue(i))}" style="padding:6px 9px">−</button>` : '<span></span>'}
+      ${canAct && G.canSell(s, p, i) ? `<button class="secondary sell" data-sell="${i}" aria-label="Sell the ${G.LEVEL_NAMES[lv].toLowerCase()} on ${esc(sp.name)} back for ${money(G.sellValue(i))}">Sell ${money(G.sellValue(i))}</button>` : '<span></span>'}
       ${canAct && s.phase === 'manage' && lv < G.RULES.maxLevel ? `<button class="primary" data-build="${i}" ${c.ok ? '' : 'disabled'} aria-label="Build on ${esc(sp.name)} for ${money(G.buildCost(i))}" style="padding:6px 9px">+${money(G.buildCost(i))}</button>` : '<span></span>'}
     </div>`;
   }
@@ -632,7 +639,23 @@ function showLots() {
   h += `</div><p class="note">Cash: <b>${money(s.players[p].cash)}</b>${s.players[p].debt ? ` · owes the bank ${money(s.players[p].debt)}` : ''}</p>`;
   const body = openSheet(h);
   body.querySelectorAll('[data-build]').forEach(b => b.addEventListener('click', async () => { closeSheet(); await doBuild(+b.dataset.build); showLots(); }));
-  body.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', async () => { closeSheet(); await doSell(+b.dataset.sell); showLots(); }));
+  // Selling asks twice: the first tap turns the button into "Sure? +$25" for a few seconds, and only a second tap sells.
+  body.querySelectorAll('[data-sell]').forEach(b => {
+    const i = +b.dataset.sell, label = [b.textContent, b.getAttribute('aria-label')];
+    let timer = null;
+    b.addEventListener('click', async () => {
+      if (busy) return;
+      if (!timer) {
+        b.classList.add('sure');
+        b.textContent = `Sure? +${money(G.sellValue(i))}`;
+        b.setAttribute('aria-label', `Sure? Tap again to ${label[1].toLowerCase()}`);
+        timer = setTimeout(() => { timer = null; b.classList.remove('sure'); [b.textContent] = label; b.setAttribute('aria-label', label[1]); }, 3000);
+        return;
+      }
+      clearTimeout(timer);
+      closeSheet(); await doSell(i); showLots();
+    });
+  });
 }
 
 // Ask the person whose turn it is to answer the game's question.
