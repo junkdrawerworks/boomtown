@@ -44,6 +44,7 @@ export const sfx = {
   payday() { tone(880, 0, 0.1, { vol: 0.08 }); tone(1320, 0.08, 0.12, { vol: 0.08 }); tone(1760, 0.16, 0.3, { vol: 0.08 }); noise(0.16, 0.12, { vol: 0.12, freq: 5000 }); },
   pay() { tone(660, 0, 0.14, { type: 'triangle', vol: 0.08, slide: 0.6 }); },
   build() { for (let k = 0; k < 3; k++) { noise(k * 0.13, 0.05, { vol: 0.5, freq: 400, q: 2 }); tone(140, k * 0.13, 0.08, { vol: 0.12 }); } },
+  sold() { for (const k of [0, 0.16]) { noise(k, 0.09, { vol: 0.55, freq: 650, q: 1.2 }); tone(110, k, 0.14, { vol: 0.16 }); } },
   stamp() { noise(0, 0.08, { vol: 0.45, freq: 900, q: 1.5 }); tone(180, 0, 0.1, { vol: 0.1 }); },
   paper() { noise(0, 0.25, { vol: 0.18, freq: 3500, q: 0.7 }); },
   end() { [523, 659, 784, 1047].forEach((f, k) => tone(f, k * 0.14, 0.35, { type: 'triangle', vol: 0.09 })); },

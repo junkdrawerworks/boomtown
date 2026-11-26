@@ -1126,7 +1126,14 @@ await page.evaluate(() => localStorage.setItem('boomtown.game', JSON.stringify(w
 
 // What the townsfolk did to you while you waited is waiting for you when your turn comes round, even after a reload,
 // and goes once you roll: here Dot forces a sale of one of your lots to finish its district, and part of the price
-// pays off your loan.
+// pays off your loan. As it happens, SOLD is stamped across the lot, and a headline says what you got for it.
+await page.evaluate(() => {
+  window.sale = { stamps: [], toasts: [] };
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.classList?.contains('stamp')) window.sale.stamps.push(n.textContent); })))
+    .observe(document.querySelector('#board .fx'), { childList: true });
+  new MutationObserver(() => { const t = document.getElementById('toast'); if (!t.hidden) window.sale.toasts.push(t.textContent); })
+    .observe(document.getElementById('toast'), { childList: true, attributes: true, attributeFilter: ['hidden'] });
+});
 await scene(`const i = B.OWNABLE.find(j => B.SPACES[j].type === 'lot' && s.level[j] === 0 && s.owner[j] !== 0 && (s.owner[j] = 0, G.buyoutPrice(s, j) != null));
   for (const j of B.LOTS_IN[B.SPACES[i].district]) if (j !== i) s.owner[j] = 3;
   s.players[0].debt = 100; s.players[3].cash = 5000; s.players[3].pos = i;
@@ -1140,6 +1147,12 @@ await page.waitForSelector('#actions button:has-text("Roll the dice")', { timeou
     return { name: window.boomtown.G && document.querySelector(`#board .cell[data-i="${window.lost}"]`).getAttribute('aria-label').split(',')[0], price: s.owner[window.lost] === 3 };
   });
   assert.equal(price, true, 'Dot did not force the sale this scene sets up');
+  const sale = await page.evaluate(() => window.sale);
+  assert.deepEqual(sale.stamps, ['SOLD'], `a forced sale is not stamped SOLD on the board: ${JSON.stringify(sale)}`);
+  const head = sale.toasts.map(x => x.match(new RegExp(`Dot made you sell ${name}\\$([\\d,]+) for land worth \\$([\\d,]+)\\.$`))).find(Boolean);
+  assert.ok(head, `no headline says Dot made you sell ${name}: ${JSON.stringify(sale.toasts)}`);
+  const [paid, land] = head.slice(1).map(x => +x.replace(/,/g, ''));
+  assert.equal(paid, Math.round(land * 1.5 / 5) * 5, `the headline's price and land value don't go together: ${head[0]}`);
   const since = new RegExp(`^Since your turn: Dot made you sell ${name} for \\$[\\d,]+ \\(\\$100 of it went to your loan\\)\\.`);
   assert.match(await page.textContent('#actions .since'), since, 'your turn does not say what happened since your last one');
   assert.match(await page.textContent('#log'), /Dot made you sell/, "the log says 'made You sell'");

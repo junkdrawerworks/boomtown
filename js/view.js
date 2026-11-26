@@ -282,18 +282,31 @@ export function createBoard(svg, { onCell, onDest } = {}) {
 
   // A few words floating up off a space: money in or out. Near the top edge (the top row and its corners) there's no
   // room above, so they start below the piece and drift down instead.
-  view.float = (i, text, color = art.INK, ms = 1300) => {
+  // `size` is '' for money, 'small' for a district's land moving, 'big' for a huge rent.
+  view.float = (i, text, color = art.INK, ms = 1300, size = '') => {
     const [x, y] = layout(i).tok;
     const down = y < 120, dir = (down ? 1 : -1) * (calm() ? 0.2 : 1);
     if (calm()) ms = Math.min(ms, 700);
     const t = document.createElementNS(NS, 'text');
-    t.setAttribute('class', 'float');
+    t.setAttribute('class', `float ${size}`.trim());
     t.setAttribute('x', x); t.setAttribute('y', down ? y + 44 : y - 20);
     t.setAttribute('fill', color);
     t.textContent = text;
     fxG.appendChild(t);
     t.animate([{ transform: 'translateY(0)', opacity: 0 }, { transform: `translateY(${14 * dir}px)`, opacity: 1, offset: 0.15 }, { transform: `translateY(${60 * dir}px)`, opacity: 0 }], { duration: ms, easing: 'ease-out' })
       .finished.then(() => t.remove(), () => t.remove());
+  };
+
+  // A forced sale: SOLD stamped across the lot in red, which fades after a moment.
+  view.stamp = (i, ms = 1700) => {
+    const r = cellRect(i, H), g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'stamp');
+    g.setAttribute('transform', `translate(${r.x + r.w / 2} ${r.y + r.h / 2}) rotate(-14)`);
+    g.innerHTML = '<g class="ink"><rect x="-50" y="-23" width="100" height="46" rx="6"/><text y="11">SOLD</text></g>';
+    fxG.appendChild(g);
+    const steps = calm() ? [{ opacity: 1 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }]
+      : [{ transform: 'scale(1.9)', opacity: 0 }, { transform: 'scale(1)', opacity: 1, offset: 0.1 }, { transform: 'scale(1)', opacity: 1, offset: 0.85 }, { opacity: 0 }];
+    g.firstChild.animate(steps, { duration: ms, easing: 'ease-out' }).finished.then(() => g.remove(), () => g.remove());
   };
 
   // A building going up, or a lot changing hands: give the cell a little bounce. It lifts like a card off the board:

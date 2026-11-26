@@ -648,11 +648,15 @@ async function play(events, my = gen, before = null) {
           await nap(600 * k);
           break;
         case 'loan': note += ` ${line}`; render(); await nap(400 * k); break;
-        case 'buy': case 'buyout':
-          sf.stamp(); render(); view.pop(e.at); note = line; setSay(note);
-          // A person made to sell gets long enough to read it.
-          await nap((e.t === 'buyout' && s.players[e.from].kind === 'human' ? 1200 : 550) * k);
+        case 'buy': case 'buyout': {
+          // A forced sale stamps SOLD across the lot. A person made to sell gets a headline, and long enough to read it.
+          const forced = e.t === 'buyout', person = forced && s.players[e.from].kind === 'human';
+          if (forced) { sf.sold(); view.stamp(e.at); } else sf.stamp();
+          render(); view.pop(e.at); note = line; setSay(note);
+          if (person) toast(`${Who(e.p)} made ${who(e.from)} sell ${esc(SPACES[e.at].name)}`, `${money(e.price)} for land worth ${money(G.landValue(shown || s, e.at))}.`, 3200 * k);
+          await nap((person ? 1200 : 550) * k);
           break;
+        }
         case 'build': case 'sell':
           if (e.t === 'build') sf.build(); else sf.pay();
           render(); view.pop(e.at); note = line; setSay(note);
@@ -1024,10 +1028,13 @@ function showCard(id) {
   });
 }
 
+// A headline over the middle of the board, for `ms`: the townsfolk's news, or a forced sale on a person's lot. The
+// play waits for it a little while, not all of that time (none at all while a turn is hurried along).
 let toastTimer = null;
-function toastCard(id, ms) {
-  const c = CARD[id], t = $('toast');
-  t.innerHTML = `<span class="mast">The Boomtown Gazette</span><span class="head">${esc(c.head)}</span><span class="body">${esc(c.body)}</span>`;
+const toastCard = (id, ms) => toast(esc(CARD[id].head), esc(CARD[id].body), ms);
+function toast(head, body, ms) {
+  const t = $('toast');
+  t.innerHTML = `<span class="mast">The Boomtown Gazette</span><span class="head">${head}</span><span class="body">${body}</span>`;
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
