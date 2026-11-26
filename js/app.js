@@ -199,6 +199,7 @@ function startGame(game, resumed = false) {
   note = resumed ? `Back in Boomtown. ${whoseTurn()}` : 'Ground broken. Every lot is for sale.';
   if (!resumed) { addLog(`A new game: ${s.rounds} rounds, ${s.players.length} players.`); addLog(`Round ${s.round}`); save(); }
   render();
+  fit(); // now the players' cards can be measured
   run();
 }
 
@@ -1031,17 +1032,28 @@ function chart() {
 // ---------- fitting the board to the screen ----------
 // On a wide screen the board is square, beside the players. On a phone held upright it stands taller than it is
 // wide, with the players underneath, so the spaces down the sides and the middle of the board get more room.
+// On a phone the board leaves room for the header above it, and below it for the players' cards and two lines of What
+// happened (the newest, which a cut-off log would hide): measured once the play screen shows (startGame fits again),
+// and before that as four players' cards would need. The log then takes what's left, up to its usual height.
+const LOG_LOW = 44, LOG_HIGH = 92; // the log box's least and usual heights on a phone, in px
 function fit() {
   const vw = innerWidth, vh = innerHeight, root = document.documentElement.style;
+  const top = document.querySelector('.top').offsetHeight || 52, cards = $('players').offsetHeight || 118;
+  const pad = parseFloat(getComputedStyle($('app')).paddingBottom) || 0;
+  const twoLines = Math.ceil(2 * 13 * 1.4 + 2 + 16); // two log lines, the gap between them and the log's padding
+  const reserve = top + 10 + 10 + cards + 8 + twoLines + pad;
   let w, H;
   if (vw >= 900) { H = 900; w = Math.min(vh - 70, vw - 400, 860); }
   else {
     H = vh / vw > 1.45 ? 1260 : 900;
     // A phone's board stops at 640 across; a tablet held upright goes as wide as leaves room below for the players.
-    w = Math.min(vw - 16, (vh - 250) * 900 / H, vw >= 700 ? vh - 250 : 640);
+    w = Math.min(vw - 16, (vh - reserve) * 900 / H, vw >= 700 ? vh - reserve : 640);
   }
   w = Math.max(260, Math.floor(w));
   const h = Math.round(w * H / 900);
+  // Where even two lines can't fit (a phone held sideways), the page scrolls anyway, and the log keeps its height.
+  const left = vh - (reserve - twoLines) - h;
+  root.setProperty('--logmax', (left >= LOG_LOW ? Math.min(Math.floor(left), LOG_HIGH) : LOG_HIGH) + 'px');
   root.setProperty('--bw', w + 'px');
   root.setProperty('--bh', h + 'px');
   root.setProperty('--ctop', (150 / H * 100) + '%');

@@ -270,7 +270,17 @@ await page.waitForTimeout(300);
 }
 await scene("s.players[0].detours = 1; s.dice = [2, 5]; s.phase = 'move';");
 assert.equal(await page.textContent('#actions .detours'), 'Detours ◆ · one back at Payday');
+
+// With four players, the newest line of What happened is on screen, and the page doesn't scroll.
+await scene("for (let k = 1; k <= 8; k++) s.log.push(`Rusty paid Dot $120 rent on Tannery Lane (${k}).`);");
+{
+  const m = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, newest: document.querySelector('#log li:first-child').getBoundingClientRect().bottom, text: document.querySelector('#log li:first-child').textContent }));
+  assert.equal(m.text, 'Rusty paid Dot $120 rent on Tannery Lane (8).');
+  assert.ok(m.doc <= 667, `the page scrolls ${m.doc - 667} px at 375x667 with four players`);
+  assert.ok(m.newest <= 667, 'the newest line of What happened is below the fold at 375x667');
+}
 await page.setViewportSize({ width: 390, height: 844 });
+assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'the page scrolls at 390x844 with four players');
 
 // Dice emptied between turns forget what they showed: a roll of the same pair as the last one shown is still drawn.
 await scene("s.dice = [2, 5]; s.phase = 'move';");

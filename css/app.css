@@ -182,7 +182,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chip .dt { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
 .log {
   list-style: none; margin: 0; padding: 8px 10px; background: #0000002a; border-radius: 10px; color: var(--paper);
-  font-size: 13px; max-height: 92px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 2px;
+  font-size: 13px; max-height: var(--logmax, 92px); overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 2px;
 }
 .log li { opacity: .7; }
 .log li:first-child { opacity: 1; }
