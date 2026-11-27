@@ -437,12 +437,15 @@ function drawPlayers(s) {
     // in the css). Whose turn it is (the gold outline) and where each piece stands are written out for a screen reader.
     // $10,000 and up, worth or cash, takes less room on a small phone: see .chip.long in the css.
     const long = (!pl.debt && money(worth).length > 6 ? ' long' : '') + (money(pl.cash).length > 6 ? ' rich' : '');
+    // Later seats start with more (RULES.seatBonus a seat, for going after the others). Until a later player's first
+    // turn is over, their card says so where their worth goes, which until then is only their cash.
+    const bonus = p > 0 && s.round === 1 && p >= s.turn && s.phase !== 'over' && !pl.debt ? G.RULES.seatBonus * p : 0;
     return {
       cls: `chip${now ? ' now' : ''}${long}`,
       // A card is a button (it opens the player's sheet), so the label carries all it says, where they stand included.
-      label: `${pl.name}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}, ${detours}. ${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.`,
+      label: `${pl.name}: ${money(pl.cash)} cash${pl.debt ? `, owes ${money(pl.debt)}` : ''}, worth ${money(worth)}${bonus ? `, ${money(bonus)} more to start for going later` : ''}, ${detours}. ${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.`,
       inner: `<span class="tk">${art.tokenSvg(pl.token, 30)}</span><span class="nm">${esc(pl.name)}</span><span class="cash">${money(pl.cash)}</span>
-      ${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : `<span class="sub worth"><span class="lbl">worth </span>${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
+      ${pl.debt ? `<span class="sub debt">owes ${money(pl.debt)}</span>` : bonus ? `<span class="sub worth later">+${money(bonus)} for <span class="wide">going later</span><span class="narrow">${['', '2nd', '3rd', '4th'][p] || `seat ${p + 1}`}</span></span>` : `<span class="sub worth"><span class="lbl">worth </span>${money(worth)}</span>`}<span class="dt" title="${detours}" aria-hidden="true">${'◆'.repeat(pl.detours)}</span>
       <span class="vh">${now ? 'Playing now. ' : ''}On ${place(pl.pos)}.</span>`,
     };
   });

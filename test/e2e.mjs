@@ -280,6 +280,29 @@ for (const [width, height] of [[390, 844], [375, 667], [360, 780], [430, 932], [
 }
 await page.setViewportSize({ width: 390, height: 844 });
 
+// A new game: until each later player's first turn is over, their card says why they start with more, where their
+// worth (only their cash so far) would go. The person in seat 0 has nothing extra, so theirs says their worth.
+{
+  const subs = async turn => {
+    await page.evaluate(turn => {
+      const { G } = window.boomtown;
+      const names = [['You', 'gus'], ['Rusty', 'rusty'], ['Mabel', 'mabel'], ['Dot', 'dot']];
+      const s = G.newGame({ seats: names.map(([name, bot], k) => ({ name, kind: k ? 'bot' : 'human', bot: k ? bot : null, token: k })), seed: 7 });
+      s.turn = turn; if (turn) s.players[0].kind = 'bot';
+      window.boomtown.start(s, true);
+    }, turn);
+    await page.waitForTimeout(300);
+    return page.$$eval('#players .chip .sub', els => els.map(e => e.innerText.trim()));
+  };
+  const first = await subs(0);
+  assert.match(first[0], /\$1,000$/);
+  assert.deepEqual(first.slice(1), ['+$50 for 2nd', '+$100 for 3rd', '+$150 for 4th'], 'later seats say why they start with more');
+  const later = await subs(2);
+  assert.match(later[1], /\$1,050$/, "Rusty's note stays after his first turn");
+  assert.deepEqual(later.slice(2), ['+$100 for 3rd', '+$150 for 4th']);
+  assert.match(await page.getAttribute('#players .chip:nth-child(4)', 'aria-label'), /\$150 more to start for going later/);
+}
+
 // A tap on a piece reaches the space it stands on: the lot's sheet opens.
 await scene('s.players[0].pos = 17;');
 {
